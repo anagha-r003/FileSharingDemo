@@ -1,4 +1,88 @@
+import React, { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { registerUser } from "../services/authService";
 const RegisterPage = () => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    dob: "",
+  });
+
+  const passwordChecks = {
+    length: form.password.length >= 8,
+    uppercase: /[A-Z]/.test(form.password),
+    lowercase: /[a-z]/.test(form.password),
+    digit: /[0-9]/.test(form.password),
+    special: /[!@#$%^&*]/.test(form.password),
+  };
+
+  const strengthScore = Object.values(passwordChecks).filter(Boolean).length;
+
+  const strengthText =
+    strengthScore <= 2 ? "Weak" : strengthScore <= 4 ? "Medium" : "Strong";
+
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrors({});
+
+    try {
+      const payload = {
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+        dob: form.dob,
+      };
+
+      const response = await registerUser(payload);
+
+      alert(response.data.message);
+
+      console.log("Success:", response);
+
+      setForm({
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        dob: "",
+      });
+    } catch (error) {
+      console.error(error);
+
+      if (error.response) {
+        const response = error.response.data;
+
+        if (response.data && typeof response.data === "object") {
+          setErrors(response.data);
+        } else {
+          setErrors({
+            confirmPassword: response.message,
+          });
+        }
+      } else {
+        setErrors({
+          general: "Something went wrong",
+        });
+      }
+    }
+  };
   return (
     <div className="bg-[#0e0e0e] text-white min-h-screen flex flex-col">
       {/* Top Navbar */}
@@ -42,16 +126,26 @@ const RegisterPage = () => {
           </div>
 
           {/* Form */}
-          <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="grid grid-cols-1 md:grid-cols-2 gap-6"
+          >
             <div className="space-y-2">
               <label className="block text-xs font-bold text-[#98a9ff] uppercase tracking-wider">
                 First Name
               </label>
               <input
                 type="text"
+                name="firstName"
+                value={form.firstName}
                 placeholder="Alex"
+                onChange={handleChange}
                 className="w-full bg-[#131313] rounded-xl text-white py-3 px-4 outline-none focus:ring-1 focus:ring-cyan-400"
               />
+              {errors.firstName && (
+                <p className="text-red-400 text-xs mt-1">{errors.firstName}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -60,9 +154,15 @@ const RegisterPage = () => {
               </label>
               <input
                 type="text"
+                name="lastName"
+                value={form.lastName}
                 placeholder="Vance"
+                onChange={handleChange}
                 className="w-full bg-[#131313] rounded-xl text-white py-3 px-4 outline-none focus:ring-1 focus:ring-cyan-400"
               />
+              {errors.lastName && (
+                <p className="text-red-400 text-xs mt-1">{errors.lastName}</p>
+              )}
             </div>
 
             <div className="md:col-span-2 space-y-2">
@@ -71,32 +171,149 @@ const RegisterPage = () => {
               </label>
               <input
                 type="email"
+                name="email"
+                value={form.email}
                 placeholder="vance@obsidian.network"
+                onChange={handleChange}
                 className="w-full bg-[#131313] rounded-xl text-white py-3 px-4 outline-none focus:ring-1 focus:ring-cyan-400"
               />
+              {errors.email && (
+                <p className="text-red-400 text-xs mt-1">{errors.email}</p>
+              )}
             </div>
 
             <div className="space-y-2">
               <label className="block text-xs font-bold text-[#98a9ff] uppercase tracking-wider">
                 Vault Password
               </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="w-full bg-[#131313] rounded-xl text-white py-3 px-4 outline-none focus:ring-1 focus:ring-cyan-400"
-              />
+
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  className="w-full bg-[#131313] rounded-xl text-white py-3 px-4 pr-12 outline-none focus:ring-1 focus:ring-cyan-400"
+                />
+                {errors.password && (
+                  <p className="text-red-400 text-xs mt-1">{errors.password}</p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
               <label className="block text-xs font-bold text-[#98a9ff] uppercase tracking-wider">
                 Confirm Vault Password
               </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="w-full bg-[#131313] rounded-xl text-white py-3 px-4 outline-none focus:ring-1 focus:ring-cyan-400"
-              />
+
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  className="w-full bg-[#131313] rounded-xl text-white py-3 px-4 pr-12 outline-none focus:ring-1 focus:ring-cyan-400"
+                />
+
+                {errors.confirmPassword && (
+                  <p className="text-red-400 text-xs mt-1">
+                    {errors.confirmPassword}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff size={18} />
+                  ) : (
+                    <Eye size={18} />
+                  )}
+                </button>
+              </div>
             </div>
+
+            {form.password && (
+              <div className="px-1 py-1 space-y-3">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  Password Requirements
+                </p>
+
+                <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+                  <p
+                    className={
+                      passwordChecks.length ? "text-green-400" : "text-gray-400"
+                    }
+                  >
+                    • 8+ characters
+                  </p>
+                  <p
+                    className={
+                      passwordChecks.uppercase
+                        ? "text-green-400"
+                        : "text-gray-400"
+                    }
+                  >
+                    • One uppercase
+                  </p>
+                  <p
+                    className={
+                      passwordChecks.lowercase
+                        ? "text-green-400"
+                        : "text-gray-400"
+                    }
+                  >
+                    • One lowercase
+                  </p>
+                  <p
+                    className={
+                      passwordChecks.digit ? "text-green-400" : "text-gray-400"
+                    }
+                  >
+                    • One digit
+                  </p>
+                  <p
+                    className={
+                      passwordChecks.special
+                        ? "text-green-400"
+                        : "text-gray-400"
+                    }
+                  >
+                    • One special char
+                  </p>
+                </div>
+
+                {/* Strength Bar */}
+                <div>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((level) => (
+                      <div
+                        key={level}
+                        className={`h-1 flex-1 rounded-full ${
+                          strengthScore >= level ? "bg-cyan-400" : "bg-gray-700"
+                        }`}
+                      ></div>
+                    ))}
+                  </div>
+
+                  <p className="text-[10px] text-cyan-400 mt-2 uppercase">
+                    Strength: {strengthText}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="md:col-span-2 space-y-2">
               <label className="block text-xs font-bold text-[#98a9ff] uppercase tracking-wider">
@@ -104,6 +321,9 @@ const RegisterPage = () => {
               </label>
               <input
                 type="date"
+                name="dob"
+                value={form.dob}
+                onChange={handleChange}
                 className="w-full bg-[#131313] rounded-xl text-white py-3 px-4 outline-none focus:ring-1 focus:ring-cyan-400"
               />
             </div>
