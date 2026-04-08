@@ -26,13 +26,16 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(PasswordMismatchException.class)
-    public ResponseEntity<ResponseStructure<String>> handlePasswordMismatch(
+    public ResponseEntity<ResponseStructure<Map<String, String>>> handlePasswordMismatch(
             PasswordMismatchException ex
     ) {
+        Map<String, String> errors = new HashMap<>();
+        errors.put("confirmPassword", ex.getMessage());
+
         return ResponseBuilder.build(
                 HttpStatus.BAD_REQUEST,
-                ex.getMessage(),
-                null
+                "Validation Failed",
+                errors
         );
     }
 

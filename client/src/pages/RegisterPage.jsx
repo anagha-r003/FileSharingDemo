@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { registerUser } from "../services/authService";
+import { toast } from "react-toastify";
+
 const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -39,6 +41,13 @@ const RegisterPage = () => {
     e.preventDefault();
     setErrors({});
 
+    let frontendErrors = {};
+
+    // frontend UX validation
+    if (form.password !== form.confirmPassword) {
+      frontendErrors.confirmPassword = "Passwords do not match";
+    }
+
     try {
       const payload = {
         firstName: form.firstName,
@@ -51,8 +60,13 @@ const RegisterPage = () => {
 
       const response = await registerUser(payload);
 
-      alert(response.data.message);
-
+      toast.success("Registration successful", {
+        position: "bottom-right",
+        autoClose: 3000,
+        hideProgressBar: true,
+        className:
+          "!bg-[#0e0e0e] !text-white !border !border-emerald-500/30 !rounded-xl !shadow-lg",
+      });
       console.log("Success:", response);
 
       setForm({
@@ -63,24 +77,48 @@ const RegisterPage = () => {
         confirmPassword: "",
         dob: "",
       });
+
+      setErrors({});
     } catch (error) {
       console.error(error);
+
+      let backendErrors = {};
 
       if (error.response) {
         const response = error.response.data;
 
         if (response.data && typeof response.data === "object") {
-          setErrors(response.data);
+          backendErrors = response.data;
         } else {
-          setErrors({
-            confirmPassword: response.message,
-          });
+          const message = response.message;
+
+          if (message.toLowerCase().includes("email")) {
+            backendErrors.email = message;
+          } else if (
+            message.toLowerCase().includes("password") ||
+            message.toLowerCase().includes("match")
+          ) {
+            backendErrors.confirmPassword = message;
+          } else {
+            backendErrors.general = message;
+          }
         }
       } else {
-        setErrors({
-          general: "Something went wrong",
-        });
+        backendErrors.general = "Something went wrong";
       }
+
+      setErrors({
+        ...backendErrors,
+        ...frontendErrors,
+      });
+    }
+
+    // If only frontend error exists but backend succeeds
+    if (Object.keys(frontendErrors).length > 0) {
+      setErrors((prev) => ({
+        ...prev,
+        ...frontendErrors,
+      }));
     }
   };
   return (
@@ -326,6 +364,9 @@ const RegisterPage = () => {
                 onChange={handleChange}
                 className="w-full bg-[#131313] rounded-xl text-white py-3 px-4 outline-none focus:ring-1 focus:ring-cyan-400"
               />
+              {errors.dob && (
+                <p className="text-red-400 text-xs mt-1">{errors.dob}</p>
+              )}
             </div>
 
             <div className="md:col-span-2 mt-4">
