@@ -1,7 +1,9 @@
 package com.fileshare.server.controller;
 
-import com.fileshare.server.dto.RegisterRequest;
+import com.fileshare.server.dto.request.LoginRequest;
+import com.fileshare.server.dto.request.RegisterRequest;
 import com.fileshare.server.dto.ResponseStructure;
+import com.fileshare.server.dto.response.LoginResponse;
 import com.fileshare.server.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,5 +23,12 @@ public class AuthController {
             @Valid @RequestBody RegisterRequest request
     ) {
         return authService.register(request);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<ResponseStructure<LoginResponse>> login(
+            @Valid @RequestBody LoginRequest request
+    ) {
+        return authService.login(request);
     }
 }

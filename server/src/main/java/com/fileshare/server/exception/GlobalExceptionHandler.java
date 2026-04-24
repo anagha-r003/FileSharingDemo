@@ -124,6 +124,39 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ResponseStructure<String>> handleInvalidCredentials(
+            InvalidCredentialsException ex
+    ) {
+        return ResponseBuilder.build(
+                HttpStatus.UNAUTHORIZED,
+                ex.getMessage(),
+                null
+        );
+    }
+
+    @ExceptionHandler(StorageLimitExceededException.class)
+    public ResponseEntity<ResponseStructure<Object>> handleStorageLimitExceeded(
+            StorageLimitExceededException ex
+    ) {
+        return ResponseBuilder.build(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                null
+        );
+    }
+
+    @ExceptionHandler(UnauthorizedAccessException.class)
+    public ResponseEntity<ResponseStructure<String>> handleUnauthorizedAccess(
+            UnauthorizedAccessException ex
+    ) {
+        return ResponseBuilder.build(
+                HttpStatus.UNAUTHORIZED,
+                ex.getMessage(),
+                null
+        );
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ResponseStructure<String>> handleGenericException(
             Exception ex

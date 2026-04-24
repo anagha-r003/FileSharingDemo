@@ -22,6 +22,9 @@ public class JwtService {
     @Value("${jwt.access.expiration}")
     private long accessExpiration;
 
+    @Value("${jwt.refresh.expiration}")
+    private long refreshExpiration;
+
     private Key key;
 
     @PostConstruct
@@ -29,12 +32,23 @@ public class JwtService {
         key = Keys.hmacShaKeyFor(secret.getBytes());
     }
 
+    // ACCESS TOKEN
     public String generateAccessToken(String email) {
+        return buildToken(email, accessExpiration);
+    }
+
+    // REFRESH TOKEN
+    public String generateRefreshToken(String email) {
+        return buildToken(email, refreshExpiration);
+    }
+
+    // COMMON TOKEN BUILDER
+    private String buildToken(String email, long expiration) {
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(
-                        new Date(System.currentTimeMillis() + accessExpiration)
+                        new Date(System.currentTimeMillis() + expiration)
                 )
                 .signWith(key)
                 .compact();

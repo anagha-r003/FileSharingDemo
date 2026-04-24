@@ -1,4 +1,4 @@
-package com.fileshare.server.dto;
+package com.fileshare.server.dto.request;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;

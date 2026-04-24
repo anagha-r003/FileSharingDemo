@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Getter
@@ -28,4 +30,15 @@ public class User {
     private String password;
 
     private LocalDate dob;
+
+    private Long storageUsed = 0L;
+
+    private Long storageLimit = 1073741824L; // 1GB
+
+    private String role = "USER";
+
+    private LocalDateTime createdAt;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List<UserFile> files;
 }
