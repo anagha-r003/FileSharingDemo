@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { registerUser } from "../services/authService";
 import { toast } from "react-toastify";
+import { Link } from "react-router-dom";
 
 const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -383,12 +384,12 @@ const RegisterPage = () => {
           <div className="mt-10 text-center space-y-4">
             <p className="text-gray-400 text-sm">
               Already have an account?
-              <a
-                href="#"
+              <Link
+                to="/login"
                 className="text-cyan-400 font-bold hover:underline ml-1"
               >
                 Secure Login
-              </a>
+              </Link>
             </p>
 
             <div className="flex flex-col md:flex-row items-center justify-center gap-6 pt-6 border-t border-zinc-700/30">
