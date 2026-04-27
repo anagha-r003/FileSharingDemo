@@ -1,8 +1,10 @@
 import { useRef, useState } from "react";
 import { uploadFile } from "../../services/fileService";
+import { uploadFolder } from "../../services/folderService";
 
 function QuickUploadCard({ onUploadComplete }) {
   const fileInputRef = useRef();
+  const folderInputRef = useRef();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState([]);
@@ -32,8 +34,30 @@ function QuickUploadCard({ onUploadComplete }) {
     if (onUploadComplete) onUploadComplete();
   };
 
-  const handleFileChange = (e) => {
-    if (e.target.files.length > 0) uploadFiles(e.target.files);
+  const uploadFolderFiles = async (fileList) => {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
+
+    setUploading(true);
+    setResults([]);
+
+    try {
+      await uploadFolder(fileList, (pct) => setProgress(pct));
+      const newResults = files.map((f) => ({ name: f.name, ok: true }));
+      setResults(newResults);
+    } catch (err) {
+      const message = err.response?.data?.message || "Folder upload failed";
+      const newResults = files.map((f) => ({
+        name: f.name,
+        ok: false,
+        message,
+      }));
+      setResults(newResults);
+    }
+
+    setProgress(0);
+    setUploading(false);
+    if (onUploadComplete) onUploadComplete();
   };
 
   const handleDrop = (e) => {
@@ -43,6 +67,7 @@ function QuickUploadCard({ onUploadComplete }) {
 
   return (
     <section className="custom-card p-8 rounded-2xl">
+      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <span className="material-symbols-outlined text-violet-400">
           cloud_upload
@@ -52,14 +77,14 @@ function QuickUploadCard({ onUploadComplete }) {
         </h3>
       </div>
 
+      {/* Drop zone */}
       <div
-        onClick={() => !uploading && fileInputRef.current.click()}
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
         className={`group border-2 border-dashed rounded-xl p-12 flex flex-col items-center justify-center bg-white/[0.02] transition-all ${
           uploading
             ? "border-violet-500/50 cursor-not-allowed"
-            : "border-white/10 hover:border-violet-500/50 cursor-pointer"
+            : "border-white/10 hover:border-violet-500/50"
         }`}
       >
         <div className="h-12 w-12 rounded-full bg-slate-800 flex items-center justify-center mb-4">
@@ -82,27 +107,67 @@ function QuickUploadCard({ onUploadComplete }) {
           </>
         ) : (
           <>
-            <p className="text-slate-300 font-medium">
-              Drag & drop or{" "}
-              <span className="text-violet-400 underline decoration-2 underline-offset-4">
-                browse
-              </span>
+            <p className="text-slate-400 text-sm mb-4">
+              Drag & drop files, or choose below
             </p>
-            <p className="text-slate-500 text-xs mt-2 uppercase tracking-widest">
+
+            <div className="flex gap-3">
+              {/* File upload button */}
+              <button
+                onClick={() => fileInputRef.current.click()}
+                disabled={uploading}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="material-symbols-outlined text-base">
+                  upload_file
+                </span>
+                Upload Files
+              </button>
+
+              {/* Folder upload button — wired to separate API, coming soon */}
+              <button
+                onClick={() => folderInputRef.current.click()}
+                disabled={uploading}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="material-symbols-outlined text-base">
+                  drive_folder_upload
+                </span>
+                Upload Folder
+              </button>
+            </div>
+
+            <p className="text-slate-500 text-xs mt-4 uppercase tracking-widest">
               Multiple files • max 100 MB each
             </p>
           </>
         )}
 
+        {/* File picker — individual files only, no webkitdirectory */}
         <input
           type="file"
           multiple
           ref={fileInputRef}
-          onChange={handleFileChange}
+          onChange={(e) =>
+            e.target.files.length > 0 && uploadFiles(e.target.files)
+          }
+          className="hidden"
+        />
+
+        {/* Folder picker — webkitdirectory, will call separate API once built */}
+        <input
+          type="file"
+          multiple
+          webkitdirectory="true"
+          ref={folderInputRef}
+          onChange={(e) =>
+            e.target.files.length > 0 && uploadFolderFiles(e.target.files)
+          }
           className="hidden"
         />
       </div>
 
+      {/* Results */}
       {results.length > 0 && (
         <div className="mt-4 space-y-1">
           {results.map((r, i) => (
@@ -116,7 +181,9 @@ function QuickUploadCard({ onUploadComplete }) {
                 {r.ok ? "check_circle" : "error"}
               </span>
               <span className="truncate">{r.name}</span>
-              {!r.ok && <span className="text-red-500">— {r.message}</span>}
+              {!r.ok && (
+                <span className="text-red-500 shrink-0">— {r.message}</span>
+              )}
             </div>
           ))}
         </div>

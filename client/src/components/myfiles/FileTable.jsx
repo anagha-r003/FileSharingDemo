@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { deleteFile, downloadFile } from "../../services/fileService";
 import ShareModal from "./ShareModal";
+import DeleteConfirmModal from "./DeleteConfirmModal";
 
 const getFileIcon = (name) => {
   const ext = name?.split(".").pop()?.toLowerCase();
@@ -43,47 +44,69 @@ const formatDate = (dateStr) => {
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
-function FileTable({ files, onRefresh }) {
+function FileTable({ files, folders = [], onRefresh }) {
   const [shareFile, setShareFile] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [view, setView] = useState("list"); // "list" | "grid"
 
-  // Filter by search
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".menu-wrapper")) {
+        setMenuOpenId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return files;
     return files.filter((f) => f.name?.toLowerCase().includes(q));
   }, [files, search]);
 
-  // Pagination
+  const filteredFolders = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return folders;
+    return folders.filter((f) => f.name?.toLowerCase().includes(q));
+  }, [folders, search]);
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  // Reset to page 1 on search
   const handleSearch = (e) => {
     setSearch(e.target.value);
     setPage(1);
   };
 
-  const handleDelete = async (file) => {
-    if (!confirm(`Delete "${file.name}"?`)) return;
-    setDeletingId(file.id);
+  const handleDelete = (file) => {
+    setDeleteTarget(file);
     setMenuOpenId(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
+    setDeleteTarget(null);
     try {
-      await deleteFile(file.id);
+      await deleteFile(deleteTarget.id);
       onRefresh();
     } catch (err) {
       console.error("Delete failed:", err);
-      alert("Failed to delete file");
     } finally {
       setDeletingId(null);
     }
   };
 
-  // Stats cards
   const stats = {
     documents: files.filter((f) => {
       const ext = f.name?.split(".").pop()?.toLowerCase();
@@ -118,7 +141,6 @@ function FileTable({ files, onRefresh }) {
     }).length,
   };
 
-  // Pagination range (show max 5 page buttons)
   const getPageNumbers = () => {
     const delta = 2;
     const range = [];
@@ -184,7 +206,6 @@ function FileTable({ files, onRefresh }) {
       <div className="custom-card rounded-2xl flex flex-col">
         {/* Search + page size row */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 py-4 border-b border-white/5">
-          {/* Search */}
           <div className="relative w-full sm:w-72">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base">
               search
@@ -211,7 +232,6 @@ function FileTable({ files, onRefresh }) {
             )}
           </div>
 
-          {/* Page size selector */}
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <span>Show</span>
             <select
@@ -230,108 +250,369 @@ function FileTable({ files, onRefresh }) {
             </select>
             <span>per page</span>
           </div>
+
+          {/* Add this next to the page size selector */}
+          <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
+            <button
+              onClick={() => setView("list")}
+              className={`p-1.5 rounded-md transition ${
+                view === "list"
+                  ? "bg-violet-600 text-white"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <span className="material-symbols-outlined text-base">list</span>
+            </button>
+            <button
+              onClick={() => setView("grid")}
+              className={`p-1.5 rounded-md transition ${
+                view === "grid"
+                  ? "bg-violet-600 text-white"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <span className="material-symbols-outlined text-base">
+                grid_view
+              </span>
+            </button>
+          </div>
         </div>
 
-        {/* Scrollable table area */}
-        <div className="overflow-auto max-h-[480px]">
-          <table className="w-full text-sm min-w-[700px]">
-            <thead className="sticky top-0 z-10 bg-[#111827]">
-              <tr className="border-b border-white/5">
-                <th className="text-left py-3 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-                  Name
-                </th>
-                <th className="text-left py-3 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-                  Size
-                </th>
-                <th className="text-left py-3 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-                  Type
-                </th>
-                <th className="text-left py-3 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-                  Last Modified
-                </th>
-                <th className="py-3 px-6"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-16 text-center text-slate-500">
-                    {search
-                      ? `No files matching "${search}"`
-                      : "No files yet. Upload something!"}
-                  </td>
+        {/* Table */}
+        {/* List view */}
+        {view === "list" && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[700px]">
+              <thead className="sticky top-0 z-10 bg-[#111827]">
+                <tr className="border-b border-white/5">
+                  <th className="text-left py-3 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                    Name
+                  </th>
+                  <th className="text-left py-3 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                    Size
+                  </th>
+                  <th className="text-left py-3 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                    Type
+                  </th>
+                  <th className="text-left py-3 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                    Last Modified
+                  </th>
+                  <th className="py-3 px-6"></th>
                 </tr>
-              ) : (
-                paginated.map((file) => {
-                  const { icon, color } = getFileIcon(file.name);
-                  const badge = getTypeBadge(file.name);
-                  return (
-                    <tr
-                      key={file.id}
-                      className="hover:bg-white/[0.02] transition"
-                    >
-                      {/* Name */}
-                      <td className="py-3 px-6">
-                        <div className="flex items-center gap-3 min-w-[200px]">
-                          <div
-                            className={`w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center ${color}`}
-                          >
-                            <span className="material-symbols-outlined text-lg">
-                              {icon}
-                            </span>
-                          </div>
-                          <span
-                            className="text-white font-medium truncate max-w-[180px]"
-                            title={file.name}
-                          >
-                            {file.name}
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {/* ── Folders ── */}
+                {filteredFolders.map((folder) => (
+                  <tr
+                    key={`folder-${folder.id}`}
+                    className="hover:bg-white/[0.02] transition"
+                  >
+                    <td className="py-3 px-6">
+                      <div className="flex items-center gap-3 min-w-[200px]">
+                        <div className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center text-amber-400 bg-amber-400/10">
+                          <span className="material-symbols-outlined text-lg">
+                            folder
                           </span>
                         </div>
-                      </td>
-
-                      {/* Size */}
-                      <td className="py-3 px-6 text-slate-400 whitespace-nowrap">
-                        {formatSize(file.size)}
-                      </td>
-
-                      {/* Type */}
-                      <td className="py-3 px-6 whitespace-nowrap">
-                        <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 border border-white/5">
-                          {badge}
+                        <span
+                          className="text-white font-medium truncate max-w-[180px]"
+                          title={folder.name}
+                        >
+                          {folder.name}
                         </span>
-                      </td>
+                      </div>
+                    </td>
+                    <td className="py-3 px-6 text-slate-400 whitespace-nowrap">
+                      —
+                    </td>
+                    <td className="py-3 px-6 whitespace-nowrap">
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-400/10 text-amber-400 border border-amber-400/20">
+                        FOLDER
+                      </span>
+                    </td>
+                    <td className="py-3 px-6 text-slate-400 whitespace-nowrap">
+                      {formatDate(folder.createdAt)}
+                    </td>
+                    <td className="py-3 px-6" />
+                  </tr>
+                ))}
 
-                      {/* Date */}
-                      <td className="py-3 px-6 text-slate-400 whitespace-nowrap">
-                        {formatDate(file.createdAt || file.uploadedAt)}
-                      </td>
+                {/* ── Files ── */}
+                {paginated.length === 0 && filteredFolders.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="py-16 text-center text-slate-500"
+                    >
+                      {search
+                        ? `No results matching "${search}"`
+                        : "No files yet. Upload something!"}
+                    </td>
+                  </tr>
+                ) : (
+                  paginated.map((file) => {
+                    const { icon, color } = getFileIcon(file.name);
+                    const badge = getTypeBadge(file.name);
+                    return (
+                      <tr
+                        key={file.id}
+                        className="hover:bg-white/[0.02] transition"
+                      >
+                        <td className="py-3 px-6">
+                          <div className="flex items-center gap-3 min-w-[200px]">
+                            <div
+                              className={`w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center ${color}`}
+                            >
+                              <span className="material-symbols-outlined text-lg">
+                                {icon}
+                              </span>
+                            </div>
+                            <span
+                              className="text-white font-medium truncate max-w-[180px]"
+                              title={file.name}
+                            >
+                              {file.name}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-6 text-slate-400 whitespace-nowrap">
+                          {formatSize(file.size)}
+                        </td>
+                        <td className="py-3 px-6 whitespace-nowrap">
+                          <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 border border-white/5">
+                            {badge}
+                          </span>
+                        </td>
+                        <td className="py-3 px-6 text-slate-400 whitespace-nowrap">
+                          {formatDate(file.createdAt || file.uploadedAt)}
+                        </td>
+                        <td className="py-3 px-6 relative menu-wrapper">
+                          <button
+                            onClick={() =>
+                              setMenuOpenId(
+                                menuOpenId === file.id ? null : file.id,
+                              )
+                            }
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+                          >
+                            <span className="material-symbols-outlined text-base">
+                              more_vert
+                            </span>
+                          </button>
+                          {menuOpenId === file.id && (
+                            <div className="absolute right-0 bottom-10 z-50 w-44 bg-[#1e2130] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
+                              <button
+                                onClick={() => {
+                                  downloadFile(file.id, file.name);
+                                  setMenuOpenId(null);
+                                }}
+                                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition group"
+                              >
+                                <span className="w-7 h-7 rounded-lg bg-blue-400/10 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-400/20 transition">
+                                  <span
+                                    className="material-symbols-outlined text-blue-400"
+                                    style={{ fontSize: 15 }}
+                                  >
+                                    download
+                                  </span>
+                                </span>
+                                Download
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShareFile(file);
+                                  setMenuOpenId(null);
+                                }}
+                                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-violet-400 transition group"
+                              >
+                                <span className="w-7 h-7 rounded-lg bg-violet-400/10 flex items-center justify-center flex-shrink-0 group-hover:bg-violet-400/20 transition">
+                                  <span
+                                    className="material-symbols-outlined text-violet-400"
+                                    style={{ fontSize: 15 }}
+                                  >
+                                    share
+                                  </span>
+                                </span>
+                                Share
+                              </button>
+                              <div className="mx-3 my-1 border-t border-white/5" />
+                              <button
+                                onClick={() => handleDelete(file)}
+                                disabled={deletingId === file.id}
+                                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-400/10 transition group"
+                              >
+                                <span className="w-7 h-7 rounded-lg bg-red-400/10 flex items-center justify-center flex-shrink-0 group-hover:bg-red-400/20 transition">
+                                  <span
+                                    className="material-symbols-outlined text-red-400"
+                                    style={{ fontSize: 15 }}
+                                  >
+                                    delete
+                                  </span>
+                                </span>
+                                {deletingId === file.id
+                                  ? "Deleting..."
+                                  : "Delete"}
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-                      {/* 3-dot menu */}
-                      <td className="py-3 px-6 relative">
+        {/* Grid view */}
+        {view === "grid" && (
+          <div className="p-6">
+            {/* Folders */}
+            {filteredFolders.length > 0 && (
+              <div className="mb-6">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                  Folders
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {filteredFolders.map((folder) => (
+                    <div
+                      key={`folder-${folder.id}`}
+                      className="group flex flex-col items-center gap-2 p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:border-amber-400/30 hover:bg-amber-400/5 cursor-pointer transition"
+                    >
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-amber-400/10">
+                        <span
+                          className="material-symbols-outlined text-amber-400"
+                          style={{ fontSize: 28 }}
+                        >
+                          folder
+                        </span>
+                      </div>
+                      <span
+                        className="text-white text-xs font-medium text-center truncate w-full"
+                        title={folder.name}
+                      >
+                        {folder.name}
+                      </span>
+                      <span className="text-slate-500 text-xs">
+                        {formatDate(folder.createdAt)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Files */}
+            {paginated.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                  Files
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {paginated.map((file) => {
+                    const { icon, color } = getFileIcon(file.name);
+                    const ext = file.name?.split(".").pop()?.toLowerCase();
+                    const isImage = [
+                      "jpg",
+                      "jpeg",
+                      "png",
+                      "gif",
+                      "webp",
+                      "svg",
+                    ].includes(ext);
+                    const isPdf = ext === "pdf";
+                    const hasPreview = isImage || isPdf;
+
+                    return (
+                      <div
+                        key={file.id}
+                        className="group relative flex flex-col rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/5 cursor-pointer transition overflow-hidden"
+                      >
+                        {/* 3-dot menu */}
                         <button
-                          onClick={() =>
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setMenuOpenId(
                               menuOpenId === file.id ? null : file.id,
-                            )
-                          }
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+                            );
+                          }}
+                          className="absolute top-2 right-2 z-10 p-1 rounded-lg text-white bg-black/40 hover:bg-black/60 opacity-0 group-hover:opacity-100 transition"
                         >
                           <span className="material-symbols-outlined text-base">
                             more_vert
                           </span>
                         </button>
 
+                        {/* Preview area */}
+                        {hasPreview ? (
+                          <div className="w-full h-32 bg-slate-900 flex items-center justify-center overflow-hidden">
+                            <img
+                              src={`http://localhost:8080/files/${file.id}/preview`}
+                              alt={file.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // fallback to icon if preview fails
+                                e.target.style.display = "none";
+                                e.target.nextSibling.style.display = "flex";
+                              }}
+                            />
+                            {/* fallback icon — hidden by default */}
+                            <div
+                              className={`w-full h-full hidden items-center justify-center ${color}`}
+                            >
+                              <span
+                                className="material-symbols-outlined"
+                                style={{ fontSize: 36 }}
+                              >
+                                {icon}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          // Non-previewable files — show large icon
+                          <div
+                            className={`w-full h-32 flex items-center justify-center ${color}`}
+                          >
+                            <span
+                              className="material-symbols-outlined"
+                              style={{ fontSize: 40 }}
+                            >
+                              {icon}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* File info */}
+                        <div className="p-3">
+                          <p
+                            className="text-white text-xs font-medium truncate w-full mb-1"
+                            title={file.name}
+                          >
+                            {file.name}
+                          </p>
+                          <p className="text-slate-500 text-xs">
+                            {formatSize(file.size)}
+                          </p>
+                        </div>
+
+                        {/* Dropdown */}
                         {menuOpenId === file.id && (
-                          <div className="absolute right-6 top-10 z-20 w-40 bg-[#1a1a2e] border border-white/10 rounded-xl shadow-xl overflow-hidden">
+                          <div className="absolute top-8 right-2 z-20 w-44 bg-[#1e2130] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1">
                             <button
                               onClick={() => {
                                 downloadFile(file.id, file.name);
                                 setMenuOpenId(null);
                               }}
-                              className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition"
+                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition group"
                             >
-                              <span className="material-symbols-outlined text-base">
-                                download
+                              <span className="w-7 h-7 rounded-lg bg-blue-400/10 flex items-center justify-center">
+                                <span
+                                  className="material-symbols-outlined text-blue-400"
+                                  style={{ fontSize: 15 }}
+                                >
+                                  download
+                                </span>
                               </span>
                               Download
                             </button>
@@ -340,39 +621,55 @@ function FileTable({ files, onRefresh }) {
                                 setShareFile(file);
                                 setMenuOpenId(null);
                               }}
-                              className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-violet-400 transition"
+                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-violet-400 transition"
                             >
-                              <span className="material-symbols-outlined text-base">
-                                share
+                              <span className="w-7 h-7 rounded-lg bg-violet-400/10 flex items-center justify-center">
+                                <span
+                                  className="material-symbols-outlined text-violet-400"
+                                  style={{ fontSize: 15 }}
+                                >
+                                  share
+                                </span>
                               </span>
                               Share
                             </button>
+                            <div className="mx-3 my-1 border-t border-white/5" />
                             <button
                               onClick={() => handleDelete(file)}
-                              disabled={deletingId === file.id}
-                              className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-400/10 transition"
+                              className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-400/10 transition"
                             >
-                              <span className="material-symbols-outlined text-base">
-                                delete
+                              <span className="w-7 h-7 rounded-lg bg-red-400/10 flex items-center justify-center">
+                                <span
+                                  className="material-symbols-outlined text-red-400"
+                                  style={{ fontSize: 15 }}
+                                >
+                                  delete
+                                </span>
                               </span>
-                              {deletingId === file.id
-                                ? "Deleting..."
-                                : "Delete"}
+                              Delete
                             </button>
                           </div>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {paginated.length === 0 && filteredFolders.length === 0 && (
+              <div className="py-16 text-center text-slate-500">
+                {search
+                  ? `No results matching "${search}"`
+                  : "No files yet. Upload something!"}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Pagination footer */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-white/5">
-          {/* Info */}
           <p className="text-slate-500 text-sm">
             Showing{" "}
             <span className="text-white font-medium">
@@ -386,9 +683,7 @@ function FileTable({ files, onRefresh }) {
             {search ? "results" : "files"}
           </p>
 
-          {/* Page buttons */}
           <div className="flex items-center gap-1">
-            {/* Prev */}
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
@@ -397,7 +692,6 @@ function FileTable({ files, onRefresh }) {
               Prev
             </button>
 
-            {/* First page if not in range */}
             {getPageNumbers()[0] > 1 && (
               <>
                 <button
@@ -412,7 +706,6 @@ function FileTable({ files, onRefresh }) {
               </>
             )}
 
-            {/* Page number buttons */}
             {getPageNumbers().map((p) => (
               <button
                 key={p}
@@ -427,7 +720,6 @@ function FileTable({ files, onRefresh }) {
               </button>
             ))}
 
-            {/* Last page if not in range */}
             {getPageNumbers()[getPageNumbers().length - 1] < totalPages && (
               <>
                 {getPageNumbers()[getPageNumbers().length - 1] <
@@ -443,7 +735,6 @@ function FileTable({ files, onRefresh }) {
               </>
             )}
 
-            {/* Next */}
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
@@ -454,6 +745,14 @@ function FileTable({ files, onRefresh }) {
           </div>
         </div>
       </div>
+
+      {deleteTarget && (
+        <DeleteConfirmModal
+          fileName={deleteTarget.name}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
 
       {shareFile && (
         <ShareModal file={shareFile} onClose={() => setShareFile(null)} />

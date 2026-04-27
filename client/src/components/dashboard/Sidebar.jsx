@@ -7,6 +7,8 @@ const navItems = [
   { label: "My Files", icon: "folder", path: "/my-files" },
   { label: "Shared Links", icon: "share", path: "/shared-links" },
   { label: "Analytics", icon: "bar_chart", path: "/analytics" },
+  { label: "Starred", icon: "star", path: "/starred" },
+  { label: "Recycle Bin", icon: "delete", path: "/recycle-bin" },
   { label: "Security Logs", icon: "security", path: "/security" },
   { label: "Settings", icon: "settings", path: "/settings" },
 ];

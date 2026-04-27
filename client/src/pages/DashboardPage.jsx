@@ -5,8 +5,10 @@ import SummaryCards from "../components/dashboard/SummaryCards";
 import QuickUploadCard from "../components/dashboard/QuickUploadCard";
 import RecentActivity from "../components/dashboard/RecentActivity";
 import StorageHealth from "../components/dashboard/StorageHealth";
+import { useAuth } from "../context/AuthContext";
 
 const DashboardPage = () => {
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
@@ -32,7 +34,7 @@ const DashboardPage = () => {
         <main className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
           <header>
             <h2 className="text-3xl font-bold text-white font-display tracking-tight">
-              Welcome back, Jerry
+              Welcome back, {user?.firstName || user?.name || "User"}
             </h2>
             <p className="text-slate-500">
               Your enterprise environment is currently operating within optimal

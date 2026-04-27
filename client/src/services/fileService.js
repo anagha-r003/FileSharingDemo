@@ -2,7 +2,7 @@ import api from "./api";
 
 export const uploadFile = async (file, onProgress) => {
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("files", file);
 
   const response = await api.post("/files/upload", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -22,7 +22,7 @@ export const getFiles = async () => {
 };
 
 export const deleteFile = async (fileId) => {
-  const response = await api.delete(`/files/${fileId}`);
+  const response = await api.delete(`/files/delete/${fileId}`);
   return response.data;
 };
 

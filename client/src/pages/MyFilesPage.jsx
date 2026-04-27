@@ -3,20 +3,32 @@ import Sidebar from "../components/dashboard/Sidebar";
 import TopNavbar from "../components/dashboard/TopNavbar";
 import FileTable from "../components/myfiles/FileTable";
 import { getFiles } from "../services/fileService";
+import { getFolders } from "../services/folderService";
+import { useLocation } from "react-router-dom";
 
 function MyFilesPage() {
   const [files, setFiles] = useState([]);
+  const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const location = useLocation();
 
-  const fetchFiles = async () => {
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      const response = await getFiles();
-      console.log("Files response:", response);
-      // Backend returns { data: [...], message: "...", status: 200 }
-      setFiles(Array.isArray(response) ? response : response.data || []);
+      const [filesRes, foldersRes] = await Promise.all([
+        // 👈 fetch both
+        getFiles(),
+        getFolders(),
+      ]);
+      console.log("Files response:", filesRes);
+      console.log("Folders response:", foldersRes);
+      setFiles(Array.isArray(filesRes) ? filesRes : filesRes.data || []);
+      setFolders(
+        Array.isArray(foldersRes) ? foldersRes : foldersRes.data || [],
+      );
     } catch (err) {
-      console.error("Failed to fetch files:", err);
+      console.error("Failed to fetch data:", err);
     } finally {
       setLoading(false);
     }
@@ -30,11 +42,11 @@ function MyFilesPage() {
   }, []);
 
   useEffect(() => {
-    fetchFiles();
-  }, []);
+    fetchData();
+  }, [location.pathname]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0c0e12] text-white">
+    <div className="flex h-screen  bg-[#0c0e12] text-white">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
 
       <div className="flex flex-col flex-1 overflow-hidden">
@@ -46,7 +58,7 @@ function MyFilesPage() {
               Loading files...
             </div>
           ) : (
-            <FileTable files={files} onRefresh={fetchFiles} />
+            <FileTable files={files} folders={folders} onRefresh={fetchData} />
           )}
         </main>
       </div>
