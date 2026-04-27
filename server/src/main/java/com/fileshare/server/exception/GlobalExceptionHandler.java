@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -152,6 +153,17 @@ public class GlobalExceptionHandler {
     ) {
         return ResponseBuilder.build(
                 HttpStatus.UNAUTHORIZED,
+                ex.getMessage(),
+                null
+        );
+    }
+
+    @ExceptionHandler(FileNotFoundException.class)
+    public ResponseEntity<ResponseStructure<String>> handleUnauthorizedAccess(
+            FileNotFoundException ex
+    ) {
+        return ResponseBuilder.build(
+                HttpStatus.NOT_FOUND,
                 ex.getMessage(),
                 null
         );

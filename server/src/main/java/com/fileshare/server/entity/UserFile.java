@@ -57,4 +57,14 @@ public class UserFile {
     public void onUpdate() {
         this.lastModified = LocalDateTime.now();
     }
+
+    @Column(nullable = true)
+    private String relativePath;
+
+    @ManyToOne
+    @JoinColumn(name = "folder_id", nullable = true)
+    private UserFolder folder; // null = root level file
+
+    @Column(name = "is_deleted", nullable = false)
+    private Boolean isDeleted = false;
 }

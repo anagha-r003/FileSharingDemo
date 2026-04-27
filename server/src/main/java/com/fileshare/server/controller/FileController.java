@@ -22,9 +22,8 @@ public class FileController {
 
     @PostMapping("/upload")
     public ResponseEntity<ResponseStructure<String>> uploadFile(
-            @RequestParam("file") List<MultipartFile> files
+            @RequestParam("files") List<MultipartFile> files
     ) throws IOException {
-
         return fileService.uploadFile(files);
     }
 
@@ -37,4 +36,21 @@ public class FileController {
     public ResponseEntity<Resource> download(@PathVariable Long fileId) throws IOException {
         return fileService.downloadFile(fileId);
     }
+
+    @DeleteMapping("/delete/{fileId}")
+    public ResponseEntity<ResponseStructure<String>> deleteFile(@PathVariable Long fileId) {
+        return fileService.deleteFile(fileId);
+    }
+
+    @GetMapping("/recycle-bin")
+    public ResponseEntity<ResponseStructure<List<UserFile>>> getDeletedFiles() {
+        return fileService.getDeletedFiles();
+    }
+
+    @GetMapping("/{id}/preview")
+    public ResponseEntity<Resource> previewFile(@PathVariable Long id) throws IOException {
+        return fileService.previewFile(id);
+    }
+
+
 }
