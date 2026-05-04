@@ -6,6 +6,10 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import MyFilesPage from "./pages/MyFilesPage";
+import SharedLinksPage from "./pages/SharedLinksPage";
+import StarredPage from "./pages/StarredPage";
+import MyProfile from "./pages/MyProfile";
+import RecycleBin from "./pages/RecycleBinPage";
 
 function App() {
   return (
@@ -30,6 +34,42 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyFilesPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/shared-links"
+            element={
+              <ProtectedRoute>
+                <SharedLinksPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/starred"
+            element={
+              <ProtectedRoute>
+                <StarredPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/my-profile"
+            element={
+              <ProtectedRoute>
+                <MyProfile />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/recycle-bin"
+            element={
+              <ProtectedRoute>
+                <RecycleBin />
               </ProtectedRoute>
             }
           />

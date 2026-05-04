@@ -28,12 +28,12 @@ export const logoutUser = async () => {
   localStorage.clear();
 };
 
-// export const getStats = async () => {
-//   const response = await api.get("/dashboard/stats");
-//   return response.data;
-// };
+export const getStats = async () => {
+  const response = await api.get("/dashboard/stats");
+  return response.data;
+};
 
-// export const getRecentActivity = async () => {
-//   const response = await api.get("/dashboard/activity");
-//   return response.data;
-// };
+export const getRecentActivity = async () => {
+  const response = await api.get("/dashboard/activity");
+  return response.data;
+};

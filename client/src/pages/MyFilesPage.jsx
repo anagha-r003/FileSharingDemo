@@ -10,14 +10,13 @@ function MyFilesPage() {
   const [files, setFiles] = useState([]);
   const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const [filesRes, foldersRes] = await Promise.all([
-        // 👈 fetch both
         getFiles(),
         getFolders(),
       ]);
@@ -46,13 +45,16 @@ function MyFilesPage() {
   }, [location.pathname]);
 
   return (
-    <div className="flex h-screen  bg-[#0c0e12] text-white">
+    <div className="flex h-screen bg-[#0c0e12] text-white overflow-hidden">
       <Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
 
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <TopNavbar title="My Files" onMenuClick={() => setSidebarOpen(true)} />
+      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+        <TopNavbar
+          title="My Files"
+          onMenuClick={() => setSidebarOpen((prev) => !prev)}
+        />
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {loading ? (
             <div className="p-16 text-center text-slate-500">
               Loading files...

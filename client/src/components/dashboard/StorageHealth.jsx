@@ -4,6 +4,7 @@ const CATEGORIES = [
   { label: "Images", gb: 0.43, color: "#8b5cf6" }, // ~430 MB
   { label: "Videos", gb: 0.25, color: "#10b981" }, // ~250 MB
   { label: "Documents", gb: 0.1, color: "#f59e0b" }, // ~100 MB
+  { label: "Others", gb: 0.1, color: "#3B82F6" }, // ~100 MB
 ];
 
 const usedGB = CATEGORIES.reduce((sum, cat) => sum + cat.gb, 0); // 0.78

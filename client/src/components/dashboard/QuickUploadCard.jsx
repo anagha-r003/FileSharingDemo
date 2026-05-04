@@ -66,13 +66,13 @@ function QuickUploadCard({ onUploadComplete }) {
   };
 
   return (
-    <section className="custom-card p-8 rounded-2xl">
+    <section className="custom-card p-5 md:p-8 rounded-2xl">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-5 md:mb-6">
         <span className="material-symbols-outlined text-violet-400">
           cloud_upload
         </span>
-        <h3 className="text-lg font-bold text-white font-['Space_Grotesk']">
+        <h3 className="text-base md:text-lg font-bold text-white font-['Space_Grotesk']">
           Quick Upload
         </h3>
       </div>
@@ -81,7 +81,7 @@ function QuickUploadCard({ onUploadComplete }) {
       <div
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
-        className={`group border-2 border-dashed rounded-xl p-12 flex flex-col items-center justify-center bg-white/[0.02] transition-all ${
+        className={`group border-2 border-dashed rounded-xl p-6 md:p-12 flex flex-col items-center justify-center bg-white/[0.02] transition-all ${
           uploading
             ? "border-violet-500/50 cursor-not-allowed"
             : "border-white/10 hover:border-violet-500/50"
@@ -95,7 +95,7 @@ function QuickUploadCard({ onUploadComplete }) {
 
         {uploading ? (
           <>
-            <p className="text-slate-300 font-medium">
+            <p className="text-slate-300 font-medium text-sm md:text-base">
               Uploading... {progress}%
             </p>
             <div className="w-full max-w-xs mt-3 bg-slate-800 rounded-full h-1.5">
@@ -107,16 +107,15 @@ function QuickUploadCard({ onUploadComplete }) {
           </>
         ) : (
           <>
-            <p className="text-slate-400 text-sm mb-4">
+            <p className="text-slate-400 text-sm mb-4 text-center">
               Drag & drop files, or choose below
             </p>
 
-            <div className="flex gap-3">
-              {/* File upload button */}
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => fileInputRef.current.click()}
                 disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="material-symbols-outlined text-base">
                   upload_file
@@ -124,11 +123,10 @@ function QuickUploadCard({ onUploadComplete }) {
                 Upload Files
               </button>
 
-              {/* Folder upload button — wired to separate API, coming soon */}
               <button
                 onClick={() => folderInputRef.current.click()}
                 disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="material-symbols-outlined text-base">
                   drive_folder_upload
@@ -137,13 +135,12 @@ function QuickUploadCard({ onUploadComplete }) {
               </button>
             </div>
 
-            <p className="text-slate-500 text-xs mt-4 uppercase tracking-widest">
+            <p className="text-slate-500 text-xs mt-4 uppercase tracking-widest text-center">
               Multiple files • max 100 MB each
             </p>
           </>
         )}
 
-        {/* File picker — individual files only, no webkitdirectory */}
         <input
           type="file"
           multiple
@@ -153,8 +150,6 @@ function QuickUploadCard({ onUploadComplete }) {
           }
           className="hidden"
         />
-
-        {/* Folder picker — webkitdirectory, will call separate API once built */}
         <input
           type="file"
           multiple

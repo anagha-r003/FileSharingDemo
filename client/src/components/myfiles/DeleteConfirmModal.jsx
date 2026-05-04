@@ -1,7 +1,6 @@
-// src/components/myfiles/DeleteConfirmModal.jsx
 function DeleteConfirmModal({ fileName, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -9,15 +8,13 @@ function DeleteConfirmModal({ fileName, onConfirm, onCancel }) {
       />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-sm mx-4 bg-[#13151f] border border-white/10 rounded-2xl shadow-2xl p-6 overflow-hidden">
-        {/* Subtle red glow in background */}
+      <div className="relative z-10 w-full max-w-sm bg-[#13151f] border border-white/10 rounded-2xl shadow-2xl p-5 md:p-6 overflow-hidden">
+        {/* Subtle red glow */}
         <div className="absolute -top-10 -right-10 w-40 h-40 bg-red-500/10 rounded-full blur-2xl pointer-events-none" />
 
-        {/* Animation container */}
+        {/* Animation */}
         <div className="relative flex justify-center mb-5">
-          {/* File icon flying into bin */}
           <div className="relative w-20 h-20">
-            {/* Recycle bin */}
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2">
               <span
                 className="material-symbols-outlined text-red-400"
@@ -26,13 +23,9 @@ function DeleteConfirmModal({ fileName, onConfirm, onCancel }) {
                 delete
               </span>
             </div>
-
-            {/* Animated file dropping in */}
             <div
               className="absolute top-0 left-1/2 -translate-x-1/2"
-              style={{
-                animation: "dropIntoBin 1.2s ease-in-out infinite",
-              }}
+              style={{ animation: "dropIntoBin 1.2s ease-in-out infinite" }}
             >
               <span
                 className="material-symbols-outlined text-slate-400"
@@ -44,7 +37,6 @@ function DeleteConfirmModal({ fileName, onConfirm, onCancel }) {
           </div>
         </div>
 
-        {/* CSS animation */}
         <style>{`
           @keyframes dropIntoBin {
             0%   { transform: translateX(-50%) translateY(0px);  opacity: 1;  }
@@ -54,18 +46,16 @@ function DeleteConfirmModal({ fileName, onConfirm, onCancel }) {
           }
         `}</style>
 
-        {/* Text */}
-        <h3 className="text-white font-bold text-lg text-center mb-1">
+        <h3 className="text-white font-bold text-base md:text-lg text-center mb-1">
           Move to Recycle Bin?
         </h3>
         <p className="text-slate-400 text-sm text-center mb-1">
           <span className="text-white font-medium">"{fileName}"</span>
         </p>
-        <p className="text-slate-500 text-xs text-center mb-6">
+        <p className="text-slate-500 text-xs text-center mb-5 md:mb-6">
           This file will be moved to the recycle bin and can be restored later.
         </p>
 
-        {/* Buttons */}
         <div className="flex gap-3">
           <button
             onClick={onCancel}
