@@ -9,6 +9,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.fileshare.server.dto.request.RefreshRequest;
+import com.fileshare.server.dto.response.RefreshResponse;
 
 @RestController
 @RequestMapping("/auth")
@@ -30,5 +32,11 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request
     ) {
         return authService.login(request);
+    }
+    @PostMapping("/refresh")
+    public ResponseEntity<ResponseStructure<RefreshResponse>> refresh(
+            @Valid @RequestBody RefreshRequest request
+    ) {
+        return authService.refresh(request);
     }
 }

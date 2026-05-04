@@ -38,9 +38,7 @@ public class UserFile {
 
     private LocalDateTime lastModified;
 
-    @ManyToOne
-    @JoinColumn(name = "parent_id")
-    private UserFile parent;
+    private LocalDateTime deletedAt;
 
     @ManyToOne
     @JsonIgnore
@@ -67,4 +65,9 @@ public class UserFile {
 
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted = false;
+
+    private Boolean isStarred = false;
+
+    private String previewPath;
+    private String mimeType;
 }

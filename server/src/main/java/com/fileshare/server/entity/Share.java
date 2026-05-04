@@ -32,6 +32,9 @@ public class Share {
 
     private int accessCount;
 
+    @Column(name = "accessed")
+    private boolean accessed;
+
     private LocalDateTime createdAt;
 
     @PrePersist

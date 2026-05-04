@@ -2,6 +2,7 @@ package com.fileshare.server.controller;
 
 import com.fileshare.server.dto.ResponseStructure;
 import com.fileshare.server.dto.request.ShareRequest;
+import com.fileshare.server.dto.response.ShareResponse;
 import com.fileshare.server.entity.Share;
 import com.fileshare.server.service.ShareService;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,7 @@ public class ShareController {
 
     // Create Share Link
     @PostMapping("/{fileId}/share")
-    public ResponseEntity<ResponseStructure<Share>> createShareLink(
+    public ResponseEntity<ResponseStructure<ShareResponse>> createShareLink(
             @PathVariable Long fileId,
             @RequestBody ShareRequest request) {
 

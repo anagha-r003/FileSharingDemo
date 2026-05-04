@@ -1,5 +1,6 @@
 package com.fileshare.server.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -37,8 +38,7 @@ public class User {
 
     private String role = "USER";
 
-    private LocalDateTime createdAt;
-
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<UserFile> files;
 }

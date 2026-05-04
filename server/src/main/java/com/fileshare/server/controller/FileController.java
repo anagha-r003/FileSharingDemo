@@ -1,6 +1,8 @@
 package com.fileshare.server.controller;
 
 import com.fileshare.server.dto.ResponseStructure;
+import com.fileshare.server.dto.response.RecycleBinStatsResponse;
+import com.fileshare.server.dto.response.StorageStatsResponse;
 import com.fileshare.server.entity.UserFile;
 import com.fileshare.server.service.FileService;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/files")
@@ -37,9 +40,44 @@ public class FileController {
         return fileService.downloadFile(fileId);
     }
 
-    @DeleteMapping("/delete/{fileId}")
+    @GetMapping("/{fileId}/preview")
+    public ResponseEntity<Resource> preview(@PathVariable Long fileId) throws IOException {
+        return fileService.getPreviewThumbnail(fileId);
+    }
+
+    @GetMapping("/view/{fileId}")
+    public ResponseEntity<Resource> view(@PathVariable Long fileId) throws IOException {
+        return fileService.viewFile(fileId);
+    }
+
+    @DeleteMapping("/{fileId}")
     public ResponseEntity<ResponseStructure<String>> deleteFile(@PathVariable Long fileId) {
         return fileService.deleteFile(fileId);
+    }
+
+    @PutMapping("/restore/{fileId}")
+    public ResponseEntity<ResponseStructure<String>> restoreFile(@PathVariable Long fileId) {
+        return fileService.restoreFile(fileId);
+    }
+
+    @DeleteMapping("/permanent/{fileId}")
+    public ResponseEntity<ResponseStructure<String>> permanentlyDeleteFile(@PathVariable Long fileId) {
+        return fileService.permanentlyDeleteFile(fileId);
+    }
+
+    @PutMapping("/restore-all")
+    public ResponseEntity<ResponseStructure<Map<String, Object>>> restoreAllFiles() {
+        return fileService.restoreAllFiles();
+    }
+
+    @DeleteMapping("/empty-bin")
+    public ResponseEntity<ResponseStructure<Map<String, Object>>> emptyRecycleBin() {
+        return fileService.emptyRecycleBin();
+    }
+
+    @GetMapping("/recycle-bin/stats")
+    public ResponseEntity<ResponseStructure<RecycleBinStatsResponse>> getRecycleBinStats() {
+        return fileService.getRecycleBinStats();
     }
 
     @GetMapping("/recycle-bin")
@@ -47,10 +85,24 @@ public class FileController {
         return fileService.getDeletedFiles();
     }
 
-    @GetMapping("/{id}/preview")
-    public ResponseEntity<Resource> previewFile(@PathVariable Long id) throws IOException {
-        return fileService.previewFile(id);
+    @PutMapping("/star/{fileId}")
+    public ResponseEntity<ResponseStructure<String>> starFile(@PathVariable Long fileId) {
+        return fileService.starFile(fileId);
     }
+
+    @PutMapping("/unstar/{fileId}")
+    public ResponseEntity<ResponseStructure<String>> unstarFile(@PathVariable Long fileId) {
+        return fileService.unstarFile(fileId);
+    }
+
+    @GetMapping("/starred")
+    public ResponseEntity<ResponseStructure<List<UserFile>>> getStarredFiles() {
+        return fileService.getStarredFiles();
+    }
+
+
+
+
 
 
 }

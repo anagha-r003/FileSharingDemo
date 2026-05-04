@@ -18,4 +18,6 @@ public interface ShareRepository extends JpaRepository<Share,Long> {
 
     // Get shares for a file
     List<Share> findByFileId(Long fileId);
+
+    void deleteByFileId(Long fileId);
 }

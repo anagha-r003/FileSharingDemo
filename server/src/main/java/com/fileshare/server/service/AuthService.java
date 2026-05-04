@@ -1,5 +1,7 @@
 package com.fileshare.server.service;
 import com.fileshare.server.dto.request.LoginRequest;
+import com.fileshare.server.dto.request.RefreshRequest;
+import com.fileshare.server.dto.response.RefreshResponse;
 import com.fileshare.server.dto.request.RegisterRequest;
 import com.fileshare.server.dto.ResponseStructure;
 import com.fileshare.server.dto.response.LoginResponse;
@@ -49,6 +51,7 @@ public class AuthService {
                 .lastName(request.getLastName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
+                . storageLimit(1024L * 1024 * 1024)
                 .dob(request.getDob())
                 .build();
 
@@ -101,5 +104,38 @@ public class AuthService {
                 "Login Successful",
                 response
         );
+    }
+    public ResponseEntity<ResponseStructure<RefreshResponse>> refresh(RefreshRequest request) {
+        log.info("Token refresh request received");
+
+        String refreshToken = request.getRefreshToken();
+
+        // Reject if token is invalid/expired or is not a refresh type token
+        if (!jwtService.isTokenValid(refreshToken) || !jwtService.isRefreshToken(refreshToken)) {
+            log.warn("Refresh failed - invalid or expired refresh token");
+            throw new InvalidCredentialsException("Invalid or expired refresh token");
+        }
+
+        String email = jwtService.extractUsername(refreshToken);
+
+        // Make sure user still exists in DB
+        userRepository.findByEmail(email)
+                .orElseThrow(() -> {
+                    log.warn("Refresh failed - user not found: {}", email);
+                    return new UserNotFoundException("User not found");
+                });
+
+        // Issue brand new tokens (refresh token rotation)
+        String newAccessToken  = jwtService.generateAccessToken(email);
+        String newRefreshToken = jwtService.generateRefreshToken(email);
+
+        log.info("Tokens refreshed successfully for: {}", email);
+
+        RefreshResponse response = RefreshResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .build();
+
+        return ResponseBuilder.build(HttpStatus.OK, "Token Refreshed", response);
     }
 }

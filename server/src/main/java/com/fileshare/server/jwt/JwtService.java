@@ -34,22 +34,32 @@ public class JwtService {
 
     // ACCESS TOKEN
     public String generateAccessToken(String email) {
-        return buildToken(email, accessExpiration);
+        return buildToken(email, accessExpiration, "access");
     }
 
     // REFRESH TOKEN
     public String generateRefreshToken(String email) {
-        return buildToken(email, refreshExpiration);
+        return buildToken(email, refreshExpiration, "refresh");
+    }
+    public boolean isRefreshToken(String token) {
+        try {
+            Claims claims = extractAllClaims(token);
+            return "refresh".equals(claims.get("type"));
+        } catch (JwtException e) {
+            return false;
+        }
     }
 
     // COMMON TOKEN BUILDER
-    private String buildToken(String email, long expiration) {
+    private String buildToken(String email, long expiration, String type) {
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(
                         new Date(System.currentTimeMillis() + expiration)
+
                 )
+                .claim("type", type)
                 .signWith(key)
                 .compact();
     }
