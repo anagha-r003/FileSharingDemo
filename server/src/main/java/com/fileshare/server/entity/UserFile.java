@@ -30,7 +30,7 @@ public class UserFile {
     @JsonIgnore
     private String path;
 
-    private String description;
+    //private String description;
 
     private boolean encrypted;
 

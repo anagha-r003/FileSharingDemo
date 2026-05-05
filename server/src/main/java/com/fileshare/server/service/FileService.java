@@ -3,12 +3,15 @@ package com.fileshare.server.service;
 import com.fileshare.server.dto.ResponseStructure;
 import com.fileshare.server.dto.response.RecycleBinStatsResponse;
 import com.fileshare.server.dto.response.StorageStatsResponse;
+import com.fileshare.server.entity.Share;
+import com.fileshare.server.entity.ShareHistory;
 import com.fileshare.server.entity.User;
 import com.fileshare.server.entity.UserFile;
 import com.fileshare.server.exception.FileNotFoundException;
 import com.fileshare.server.exception.StorageLimitExceededException;
 import com.fileshare.server.exception.UnauthorizedAccessException;
 import com.fileshare.server.repository.FileRepository;
+import com.fileshare.server.repository.ShareHistoryRepository;
 import com.fileshare.server.repository.ShareRepository;
 import com.fileshare.server.repository.UserRepository;
 import com.fileshare.server.util.ResponseBuilder;
@@ -49,6 +52,7 @@ public class FileService {
     private final FileRepository fileRepository;
     private final UserRepository userRepository;
     private final ShareRepository shareRepository;
+    private final ShareHistoryRepository shareHistoryRepository;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -231,19 +235,41 @@ public class FileService {
 
         UserFile file = getAuthorizedDeletedFile(fileId);
 
-        shareRepository.deleteByFileId(fileId);
-        // delete physical file from disk
+        // Fetch all shares
+        List<Share> shares = shareRepository.findByFileId(fileId);
+
+        // Convert to ShareHistory
+        List<ShareHistory> historyList = shares.stream().map(share ->
+                ShareHistory.builder()
+                        .fileId(file.getId()) // optional reference
+                        .fileName(file.getName())
+                        .fileType(file.getType().name())
+                        .fileSize(file.getSize())
+                        .sharedBy(share.getUser().getId())
+                        .sharedAt(share.getCreatedAt())
+                        .deletedAt(LocalDateTime.now())
+                        .build()
+        ).toList();
+
+        //Save to history table
+        shareHistoryRepository.saveAll(historyList);
+
+        // Delete from share table
+        shareRepository.deleteAll(shares);
+
+        // Delete physical file from disk
         File diskFile = new File(file.getPath());
         if (diskFile.exists()) {
             diskFile.delete();
         }
 
+        // Update storage
         user.setStorageUsed(
                 Math.max(0, user.getStorageUsed() - file.getSize())
         );
-
         userRepository.save(user);
 
+        // Delete file from DB
         fileRepository.delete(file);
 
         return ResponseBuilder.build(
