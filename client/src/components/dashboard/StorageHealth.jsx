@@ -1,20 +1,27 @@
-const TOTAL_GB = 1;
+import { useState, useEffect } from "react";
+import { getStorageStats } from "../../services/dashboardService";
+//const TOTAL_GB = 1;
 
-const CATEGORIES = [
-  { label: "Images", gb: 0.43, color: "#8b5cf6" }, // ~430 MB
-  { label: "Videos", gb: 0.25, color: "#10b981" }, // ~250 MB
-  { label: "Documents", gb: 0.1, color: "#f59e0b" }, // ~100 MB
-  { label: "Others", gb: 0.1, color: "#3B82F6" }, // ~100 MB
-];
+// const CATEGORIES = [
+//   { label: "Images", gb: 0.43, color: "#8b5cf6" }, // ~430 MB
+//   { label: "Videos", gb: 0.25, color: "#10b981" }, // ~250 MB
+//   { label: "Documents", gb: 0.1, color: "#f59e0b" }, // ~100 MB
+//   { label: "Others", gb: 0.1, color: "#3B82F6" }, // ~100 MB
+// ];
 
-const usedGB = CATEGORIES.reduce((sum, cat) => sum + cat.gb, 0); // 0.78
-const freeGB = +(TOTAL_GB - usedGB).toFixed(2); // 0.22
-const usedPct = +((usedGB / TOTAL_GB) * 100).toFixed(1); // 78.0%
+// const usedGB = CATEGORIES.reduce((sum, cat) => sum + cat.gb, 0); // 0.78
+// const freeGB = +(TOTAL_GB - usedGB).toFixed(2); // 0.22
+// const usedPct = +((usedGB / TOTAL_GB) * 100).toFixed(1); // 78.0%
 
-// Helper: format display — show MB if < 1 GB for readability
-function fmt(gb) {
-  if (gb < 1) return `${Math.round(gb * 1000)} MB`;
-  return `${gb.toFixed(2)} GB`;
+// Helper: format display — shows exact value from backend
+function fmt(mb) {
+  if (mb < 1 && mb > 0) return `${mb.toFixed(2)} MB`; // 0.35 → "0.35 MB"
+  return `${Math.round(mb)} MB`;
+}
+
+// Helper: convert MB to GB string — for total and free display
+function fmtGB(mb) {
+  return `${(mb / 1024).toFixed(2)} GB`;
 }
 
 // ─── Donut helpers ────────────────────────────────────────────────────────────
@@ -36,12 +43,12 @@ function arcPath(startDeg, endDeg) {
   return `M ${start.x} ${start.y} A ${RADIUS} ${RADIUS} 0 ${largeArc} 1 ${end.x} ${end.y}`;
 }
 
-function buildArcs() {
+function buildArcs(categories, totalMB) {
   let cursor = 0;
-  return CATEGORIES.map((cat, index) => {
-    const span = (cat.gb / TOTAL_GB) * 360;
+  return categories.map((cat, index) => {
+    const span = (cat.mb / totalMB) * 360; // ← mb not gb
     const isFirst = index === 0;
-    const isLast = index === CATEGORIES.length - 1;
+    const isLast = index === categories.length - 1;
     const startDeg = cursor + (isFirst ? 0 : GAP_DEGREES / 2);
     const endDeg = cursor + span - (isLast ? 0 : GAP_DEGREES / 2);
     cursor += span;
@@ -49,10 +56,70 @@ function buildArcs() {
   });
 }
 
-const ARCS = buildArcs();
+//const ARCS = buildArcs();
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function StorageHealth() {
+  const [storageData, setStorageData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchStorage = async () => {
+      try {
+        setLoading(true); // step A: start loading
+
+        const result = await getStorageStats(); // step B: call your service
+        setStorageData(result.data); // step C: store the nested data
+      } catch (err) {
+        setError(err.message); // step D: if anything fails, store the error
+      } finally {
+        setLoading(false); // step E: always stop loading, success or fail
+      }
+    };
+
+    fetchStorage();
+  }, []); // ← empty array = run only once on mount
+
+  // Still waiting for API response
+  if (loading) {
+    return (
+      <div className="bg-[#0f0f17] border border-[#1a1a28] rounded-[14px] p-6 flex items-center justify-center h-[400px]">
+        <span className="text-[#44446a] text-sm animate-pulse">
+          Loading storage...
+        </span>
+      </div>
+    );
+  }
+
+  // API call failed
+  if (error || !storageData) {
+    return (
+      <div className="bg-[#0f0f17] border border-[#1a1a28] rounded-[14px] p-6 flex items-center justify-center h-[400px]">
+        <span className="text-red-400 text-sm">
+          Failed to load storage data
+        </span>
+      </div>
+    );
+  }
+
+  const CATEGORIES = [
+    { label: "Images", mb: storageData.imagesMB, color: "#8b5cf6" },
+    { label: "Videos", mb: storageData.videosMB, color: "#10b981" },
+    { label: "Documents", mb: storageData.documentsMB, color: "#f59e0b" },
+    { label: "Others", mb: storageData.othersMB, color: "#3B82F6" },
+  ];
+
+  const totalMB = storageData.storageLimitMB; // 1024
+  const usedMB = storageData.totalUsedMB; // 0.35
+  const freeMB = storageData.remainingMB; // 1023.65
+  const usedPct = storageData.percentage; // 0
+  const freePct = storageData.remainingPercentage; // 99
+
+  const activeCategories = CATEGORIES.filter((cat) => cat.mb > 0);
+  const ARCS =
+    activeCategories.length > 0 ? buildArcs(activeCategories, totalMB) : [];
+
   return (
     <div className="bg-[#0f0f17] border border-[#1a1a28] rounded-[14px] p-6 hover:border-violet-500/50">
       {/* Header */}
@@ -108,15 +175,15 @@ export default function StorageHealth() {
           </div>
         </div>
 
-        {/* Used / total */}
+        {/* Used / total — show exact MB used, total in GB */}
         <p className="text-[13px] text-[#44446a] mt-3">
           <span
             className="text-[16px] font-black text-white"
             style={{ fontFamily: "'Syne', sans-serif" }}
           >
-            {fmt(usedGB)}
+            {fmt(usedMB)}
           </span>{" "}
-          / {TOTAL_GB} GB used
+          / {fmtGB(totalMB)} used
         </p>
       </div>
 
@@ -147,17 +214,17 @@ export default function StorageHealth() {
               <div
                 className="h-full rounded-full"
                 style={{
-                  width: `${(cat.gb / usedGB) * 100}%`,
+                  width: usedMB > 0 ? `${(cat.mb / usedMB) * 100}%` : "0%",
                   background: cat.color,
                 }}
               />
             </div>
-            {/* Size */}
+            {/* Size — exact MB value from backend */}
             <span
               className="text-[13px] font-semibold text-white tabular-nums"
               style={{ width: 54, textAlign: "right" }}
             >
-              {fmt(cat.gb)}
+              {fmt(cat.mb)}
             </span>
           </div>
         ))}
@@ -172,6 +239,7 @@ export default function StorageHealth() {
           <p className="text-[10.5px] font-semibold text-[#44446a] uppercase tracking-[0.9px] mb-1.5">
             Remaining Available
           </p>
+          {/* Free shown in GB — direct conversion from backend remainingMB */}
           <p
             className="text-[26px] font-black leading-none"
             style={{
@@ -181,7 +249,7 @@ export default function StorageHealth() {
               WebkitTextFillColor: "transparent",
             }}
           >
-            {fmt(freeGB)} <span style={{ fontSize: 13 }}>free</span>
+            {fmtGB(freeMB)} <span style={{ fontSize: 13 }}>free</span>
           </p>
         </div>
 
@@ -189,7 +257,7 @@ export default function StorageHealth() {
         <div className="flex flex-col items-end gap-1.5">
           <div className="flex items-end gap-[3px]" style={{ height: 28 }}>
             {Array.from({ length: 10 }).map((_, i) => {
-              const freeBars = Math.round((freeGB / TOTAL_GB) * 10);
+              const freeBars = Math.round((freeMB / totalMB) * 10);
               return (
                 <div
                   key={i}
@@ -202,9 +270,8 @@ export default function StorageHealth() {
               );
             })}
           </div>
-          <span className="text-[10px] text-[#44446a]">
-            {((freeGB / TOTAL_GB) * 100).toFixed(0)}% free
-          </span>
+          {/* freePct comes directly from backend remainingPercentage */}
+          <span className="text-[10px] text-[#44446a]">{freePct}% free</span>
         </div>
       </div>
     </div>

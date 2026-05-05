@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   deleteFile,
   downloadFile,
@@ -86,25 +86,20 @@ const formatDate = (dateStr) => {
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
+// Reusable transparent checkbox style
+const CB =
+  "w-4 h-4 cursor-pointer appearance-none rounded border border-slate-500 checked:bg-violet-600 checked:border-violet-600 bg-transparent transition";
+
 function FileTable({ files, folders = [], onRefresh }) {
   const [shareFile, setShareFile] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
-  const [menuOpenId, setMenuOpenId] = useState(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [view, setView] = useState("list");
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (!event.target.closest(".menu-wrapper")) {
-        setMenuOpenId(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [hoveredId, setHoveredId] = useState(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -112,23 +107,23 @@ function FileTable({ files, folders = [], onRefresh }) {
     return files.filter((f) => f.name?.toLowerCase().includes(q));
   }, [files, search]);
 
-  const filteredFolders = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return folders;
-    return folders.filter((f) => f.name?.toLowerCase().includes(q));
-  }, [folders, search]);
+  // const filteredFolders = useMemo(() => {
+  //   const q = search.trim().toLowerCase();
+  //   if (!q) return folders;
+  //   return folders.filter((f) => f.name?.toLowerCase().includes(q));
+  // }, [folders, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+  const pageIds = paginated.map((f) => f.id);
+  const allPageSelected =
+    pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
+  const somePageSelected = pageIds.some((id) => selectedIds.includes(id));
+
   const handleSearch = (e) => {
     setSearch(e.target.value);
     setPage(1);
-  };
-
-  const handleDelete = (file) => {
-    setDeleteTarget(file);
-    setMenuOpenId(null);
   };
 
   const handleView = async (file) => {
@@ -142,28 +137,65 @@ function FileTable({ files, folders = [], onRefresh }) {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    setDeletingId(deleteTarget.id);
     setDeleteTarget(null);
     try {
       await deleteFile(deleteTarget.id);
       onRefresh();
     } catch (err) {
       console.error("Delete failed:", err);
-    } finally {
-      setDeletingId(null);
     }
   };
 
   const handleToggleStar = async (file) => {
     try {
-      if (file.isStarred) {
-        await unstarFile(file.id);
-      } else {
-        await starFile(file.id);
-      }
+      if (file.isStarred) await unstarFile(file.id);
+      else await starFile(file.id);
       onRefresh();
     } catch (err) {
       console.error("Star/unstar failed", err);
+    }
+  };
+
+  const toggleSelect = (id, e) => {
+    e.stopPropagation();
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    );
+  };
+
+  const toggleSelectAll = () => {
+    const allSelected = pageIds.every((id) => selectedIds.includes(id));
+    if (allSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
+    } else {
+      setSelectedIds((prev) => [...new Set([...prev, ...pageIds])]);
+    }
+  };
+
+  const clearSelection = () => setSelectedIds([]);
+
+  const handleBulkDownload = () => {
+    selectedIds.forEach((id) => {
+      const file = files.find((f) => f.id === id);
+      if (file) downloadFile(file.id, file.name);
+    });
+  };
+
+  const handleBulkShare = () => {
+    const file = files.find((f) => f.id === selectedIds[0]);
+    if (file) setShareFile(file);
+  };
+
+  const handleBulkDelete = async () => {
+    setBulkDeleting(true);
+    try {
+      await Promise.all(selectedIds.map((id) => deleteFile(id)));
+      clearSelection();
+      onRefresh();
+    } catch (err) {
+      console.error("Bulk delete failed:", err);
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -191,68 +223,6 @@ function FileTable({ files, folders = [], onRefresh }) {
     }
     return range;
   }, [page, totalPages]);
-
-  const ActionMenu = ({ file, position = "bottom" }) => (
-    <div
-      className={`absolute ${position === "grid" ? "top-8 right-2" : "right-0 top-full mt-1"} z-50 w-44 bg-[#1e2130] border border-white/10 rounded-xl shadow-2xl overflow-hidden py-1`}
-    >
-      <button
-        onClick={(e) => {
-          downloadFile(file.id, file.name);
-          setMenuOpenId(null);
-          e.stopPropagation();
-        }}
-        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition group"
-      >
-        <span className="w-7 h-7 rounded-lg bg-blue-400/10 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-400/20 transition">
-          <span
-            className="material-symbols-outlined text-blue-400"
-            style={{ fontSize: 15 }}
-          >
-            download
-          </span>
-        </span>
-        Download
-      </button>
-      <button
-        onClick={(e) => {
-          setShareFile(file);
-          setMenuOpenId(null);
-          e.stopPropagation();
-        }}
-        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-violet-400 transition group"
-      >
-        <span className="w-7 h-7 rounded-lg bg-violet-400/10 flex items-center justify-center flex-shrink-0 group-hover:bg-violet-400/20 transition">
-          <span
-            className="material-symbols-outlined text-violet-400"
-            style={{ fontSize: 15 }}
-          >
-            share
-          </span>
-        </span>
-        Share
-      </button>
-      <div className="mx-3 my-1 border-t border-white/5" />
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          handleDelete(file);
-        }}
-        disabled={deletingId === file.id}
-        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-400/10 transition group"
-      >
-        <span className="w-7 h-7 rounded-lg bg-red-400/10 flex items-center justify-center flex-shrink-0 group-hover:bg-red-400/20 transition">
-          <span
-            className="material-symbols-outlined text-red-400"
-            style={{ fontSize: 15 }}
-          >
-            delete
-          </span>
-        </span>
-        {deletingId === file.id ? "Deleting..." : "Delete"}
-      </button>
-    </div>
-  );
 
   return (
     <>
@@ -307,73 +277,122 @@ function FileTable({ files, folders = [], onRefresh }) {
       <div className="custom-card rounded-2xl flex flex-col">
         {/* Toolbar */}
         <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 px-4 md:px-6 py-5 border-b border-white/5">
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
-            <div className="relative w-full sm:w-64 md:w-80">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base">
-                search
-              </span>
-              <input
-                type="text"
-                value={search}
-                onChange={handleSearch}
-                placeholder="Search your vault..."
-                className="w-full bg-[#111] border border-white/10 rounded-xl text-white text-sm py-2.5 pl-10 pr-4 outline-none focus:border-violet-500/50 transition placeholder:text-slate-600 shadow-inner"
-              />
-              {search && (
+          {/* Search — always visible */}
+          <div className="relative w-full sm:w-64 md:w-80">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-base">
+              search
+            </span>
+            <input
+              type="text"
+              value={search}
+              onChange={handleSearch}
+              placeholder="Search your vault..."
+              className="w-full bg-[#111] border border-white/10 rounded-xl text-white text-sm py-2.5 pl-10 pr-4 outline-none focus:border-violet-500/50 transition placeholder:text-slate-600 shadow-inner"
+            />
+            {search && (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setPage(1);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition"
+              >
+                <span className="material-symbols-outlined text-base">
+                  close
+                </span>
+              </button>
+            )}
+          </div>
+
+          {/* Right side: bulk toolbar OR normal controls */}
+          <div className="flex items-center justify-between xl:justify-end gap-3 w-full xl:w-auto">
+            {selectedIds.length > 0 ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-white mr-2">
+                  {selectedIds.length} selected
+                </span>
                 <button
-                  onClick={() => {
-                    setSearch("");
-                    setPage(1);
-                  }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition"
+                  onClick={handleBulkDownload}
+                  title="Download selected"
+                  className="p-2 rounded-lg text-blue-400 bg-blue-400/10 hover:bg-blue-400/20 border border-blue-400/20 transition"
+                >
+                  <span className="material-symbols-outlined text-base">
+                    download
+                  </span>
+                </button>
+                <button
+                  onClick={handleBulkShare}
+                  title="Share selected"
+                  className="p-2 rounded-lg text-violet-400 bg-violet-400/10 hover:bg-violet-400/20 border border-violet-400/20 transition"
+                >
+                  <span className="material-symbols-outlined text-base">
+                    share
+                  </span>
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={bulkDeleting}
+                  title="Delete selected"
+                  className="p-2 rounded-lg text-red-400 bg-red-400/10 hover:bg-red-400/20 border border-red-400/20 transition disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-base">
+                    delete
+                  </span>
+                </button>
+                <button
+                  onClick={clearSelection}
+                  title="Clear selection"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
                 >
                   <span className="material-symbols-outlined text-base">
                     close
                   </span>
                 </button>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between xl:justify-end gap-3 w-full xl:w-auto">
-            <div className="flex items-center gap-2 text-[13px] text-slate-400 font-medium">
-              <span className="hidden sm:inline">Show</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="bg-[#111] border border-white/10 rounded-lg text-white px-2 py-1.5 outline-none hover:border-white/20 transition cursor-pointer"
-              >
-                {PAGE_SIZE_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="h-6 w-[1px] bg-white/10 mx-1 hidden sm:block" />
-            <div className="flex items-center gap-1 bg-black/40 border border-white/5 rounded-xl p-1">
-              <button
-                onClick={() => setView("list")}
-                className={`p-2 rounded-lg transition-all ${view === "list" ? "bg-violet-600 text-white shadow-lg shadow-violet-600/20" : "text-slate-500 hover:text-slate-200"}`}
-              >
-                <span className="material-symbols-outlined text-lg">list</span>
-              </button>
-              <button
-                onClick={() => setView("grid")}
-                className={`p-2 rounded-lg transition-all ${view === "grid" ? "bg-violet-600 text-white shadow-lg shadow-violet-600/20" : "text-slate-500 hover:text-slate-200"}`}
-              >
-                <span className="material-symbols-outlined text-lg">
-                  grid_view
-                </span>
-              </button>
-            </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 text-[13px] text-slate-400 font-medium">
+                  <span className="hidden sm:inline">Show</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="bg-[#111] border border-white/10 rounded-lg text-white px-2 py-1.5 outline-none hover:border-white/20 transition cursor-pointer"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="h-6 w-[1px] bg-white/10 mx-1 hidden sm:block" />
+                <div className="flex items-center gap-1 bg-black/40 border border-white/5 rounded-xl p-1">
+                  <button
+                    onClick={() => setView("list")}
+                    className={`p-2 rounded-lg transition-all ${view === "list" ? "bg-violet-600 text-white shadow-lg shadow-violet-600/20" : "text-slate-500 hover:text-slate-200"}`}
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      list
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setView("grid")}
+                    className={`p-2 rounded-lg transition-all ${view === "grid" ? "bg-violet-600 text-white shadow-lg shadow-violet-600/20" : "text-slate-500 hover:text-slate-200"}`}
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      grid_view
+                    </span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* ── LIST VIEW ── */}
+        {/* LIST VIEW */}
         {view === "list" && (
           <>
             {/* Desktop */}
@@ -387,6 +406,19 @@ function FileTable({ files, folders = [], onRefresh }) {
               >
                 <thead className="sticky top-0 z-10 bg-[#111827]">
                   <tr className="border-b border-white/5">
+                    <th className="py-3 pl-6 pr-2 w-10">
+                      <input
+                        type="checkbox"
+                        checked={allPageSelected}
+                        ref={(el) => {
+                          if (el)
+                            el.indeterminate =
+                              somePageSelected && !allPageSelected;
+                        }}
+                        onChange={toggleSelectAll}
+                        className={CB}
+                      />
+                    </th>
                     <th className="text-left py-3 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                       Name
                     </th>
@@ -399,18 +431,17 @@ function FileTable({ files, folders = [], onRefresh }) {
                     <th className="text-left py-3 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
                       Last Modified
                     </th>
-                    {/* Star column header */}
                     <th className="py-3 px-2" />
-                    <th className="py-3 px-6" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {/* Folders */}
+                  {/* Folders
                   {filteredFolders.map((folder) => (
                     <tr
                       key={`folder-${folder.id}`}
                       className="hover:bg-white/[0.02] transition"
                     >
+                      <td className="py-3 pl-6 pr-2 w-10" />
                       <td className="py-3 px-6">
                         <div className="flex items-center gap-3 min-w-[180px]">
                           <div className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center text-amber-400 bg-amber-400/10">
@@ -438,9 +469,8 @@ function FileTable({ files, folders = [], onRefresh }) {
                         {formatDate(folder.createdAt)}
                       </td>
                       <td className="py-3 px-2" />
-                      <td className="py-3 px-6" />
                     </tr>
-                  ))}
+                  ))} */}
 
                   {/* Files */}
                   {paginated.length === 0 && filteredFolders.length === 0 ? (
@@ -457,12 +487,36 @@ function FileTable({ files, folders = [], onRefresh }) {
                   ) : (
                     paginated.map((file) => {
                       const { icon, color, badge } = getFileMeta(file.name);
+                      const isSelected = selectedIds.includes(file.id);
+                      const isHovered = hoveredId === file.id;
                       return (
                         <tr
                           key={file.id}
-                          className="hover:bg-white/[0.02] transition cursor-pointer"
+                          className="transition cursor-pointer"
+                          style={{
+                            background: isSelected
+                              ? "rgba(99,102,241,0.08)"
+                              : undefined,
+                          }}
+                          onMouseEnter={() => setHoveredId(file.id)}
+                          onMouseLeave={() => setHoveredId(null)}
                           onClick={() => handleView(file)}
                         >
+                          {/* Checkbox */}
+                          <td
+                            className="py-3 pl-6 pr-2 w-10"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {(isHovered || isSelected) && (
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => toggleSelect(file.id, e)}
+                                className={CB}
+                              />
+                            )}
+                          </td>
+
                           {/* Name */}
                           <td className="py-3 px-6">
                             <div className="flex items-center gap-3 min-w-[180px]">
@@ -496,47 +550,20 @@ function FileTable({ files, folders = [], onRefresh }) {
                             {formatDate(file.createdAt || file.uploadedAt)}
                           </td>
 
-                          {/* ★ Star — own column, right-aligned before ⋮ */}
+                          {/* Star */}
                           <td className="py-3 px-2 whitespace-nowrap">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleToggleStar(file);
                               }}
-                              className={`p-1 rounded-lg transition-colors ${
-                                file.isStarred
-                                  ? "text-yellow-400"
-                                  : "text-slate-600 hover:text-yellow-400"
-                              }`}
+                              className={`p-1 rounded-lg transition-colors ${file.isStarred ? "text-yellow-400" : "text-slate-600 hover:text-yellow-400"}`}
                               title={file.isStarred ? "Unstar" : "Star"}
                             >
                               <span className="material-symbols-outlined text-[20px]">
                                 {file.isStarred ? "star" : "star_outline"}
                               </span>
                             </button>
-                          </td>
-
-                          {/* ⋮ Actions */}
-                          <td
-                            className="py-3 px-6 relative menu-wrapper"
-                            style={{ overflow: "visible" }}
-                          >
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setMenuOpenId(
-                                  menuOpenId === file.id ? null : file.id,
-                                );
-                              }}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
-                            >
-                              <span className="material-symbols-outlined text-base">
-                                more_vert
-                              </span>
-                            </button>
-                            {menuOpenId === file.id && (
-                              <ActionMenu file={file} position="bottom" />
-                            )}
                           </td>
                         </tr>
                       );
@@ -548,7 +575,7 @@ function FileTable({ files, folders = [], onRefresh }) {
 
             {/* Mobile */}
             <div className="md:hidden divide-y divide-white/5">
-              {filteredFolders.map((folder) => (
+              {/* {filteredFolders.map((folder) => (
                 <div
                   key={`folder-m-${folder.id}`}
                   className="flex items-center gap-3 px-4 py-3"
@@ -567,9 +594,9 @@ function FileTable({ files, folders = [], onRefresh }) {
                     </p>
                   </div>
                 </div>
-              ))}
+              ))} */}
 
-              {paginated.length === 0 && filteredFolders.length === 0 ? (
+              {paginated.length === 0 ? (
                 <div className="py-16 text-center text-slate-500 text-sm">
                   {search
                     ? `No results matching "${search}"`
@@ -578,12 +605,31 @@ function FileTable({ files, folders = [], onRefresh }) {
               ) : (
                 paginated.map((file) => {
                   const { icon, color } = getFileMeta(file.name);
+                  const isSelected = selectedIds.includes(file.id);
                   return (
                     <div
                       key={file.id}
                       className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition"
+                      style={{
+                        background: isSelected
+                          ? "rgba(99,102,241,0.08)"
+                          : undefined,
+                      }}
                       onClick={() => handleView(file)}
                     >
+                      {/* Checkbox — wrapped to stop row click propagation */}
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-shrink-0"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => toggleSelect(file.id, e)}
+                          className={CB}
+                        />
+                      </div>
+
                       <div
                         className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center ${color}`}
                       >
@@ -591,6 +637,7 @@ function FileTable({ files, folders = [], onRefresh }) {
                           {icon}
                         </span>
                       </div>
+
                       <div className="flex-1 min-w-0">
                         <p className="text-white text-sm font-medium truncate">
                           {file.name}
@@ -601,45 +648,20 @@ function FileTable({ files, folders = [], onRefresh }) {
                         </p>
                       </div>
 
-                      {/* ★ Star + ⋮ grouped on right */}
-                      <div
-                        className="relative menu-wrapper flex-shrink-0 flex items-center gap-1"
-                        style={{ overflow: "visible" }}
+                      {/* Star */}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleToggleStar(file);
+                        }}
+                        className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${file.isStarred ? "text-yellow-400" : "text-slate-600 hover:text-yellow-400"}`}
+                        title={file.isStarred ? "Unstar" : "Star"}
                       >
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleToggleStar(file);
-                          }}
-                          className={`p-1.5 rounded-lg transition-colors ${
-                            file.isStarred
-                              ? "text-yellow-400"
-                              : "text-slate-600 hover:text-yellow-400"
-                          }`}
-                          title={file.isStarred ? "Unstar" : "Star"}
-                        >
-                          <span className="material-symbols-outlined text-[18px]">
-                            {file.isStarred ? "star" : "star_outline"}
-                          </span>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpenId(
-                              menuOpenId === file.id ? null : file.id,
-                            );
-                          }}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
-                        >
-                          <span className="material-symbols-outlined text-base">
-                            more_vert
-                          </span>
-                        </button>
-                        {menuOpenId === file.id && (
-                          <ActionMenu file={file} position="bottom" />
-                        )}
-                      </div>
+                        <span className="material-symbols-outlined text-[18px]">
+                          {file.isStarred ? "star" : "star_outline"}
+                        </span>
+                      </button>
                     </div>
                   );
                 })
@@ -648,10 +670,10 @@ function FileTable({ files, folders = [], onRefresh }) {
           </>
         )}
 
-        {/* ── GRID VIEW ── */}
+        {/* GRID VIEW */}
         {view === "grid" && (
           <div className="p-4 md:p-6">
-            {filteredFolders.length > 0 && (
+            {/* {filteredFolders.length > 0 && (
               <div className="mb-6">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
                   Folders
@@ -683,7 +705,7 @@ function FileTable({ files, folders = [], onRefresh }) {
                   ))}
                 </div>
               </div>
-            )}
+            )} */}
 
             {paginated.length > 0 && (
               <div>
@@ -693,54 +715,45 @@ function FileTable({ files, folders = [], onRefresh }) {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
                   {paginated.map((file) => {
                     const { icon, color, hasPreview } = getFileMeta(file.name);
+                    const isSelected = selectedIds.includes(file.id);
                     return (
                       <div
                         key={file.id}
                         onClick={() => handleView(file)}
                         className="group relative flex flex-col rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/20 hover:bg-white/5 cursor-pointer transition overflow-hidden"
+                        style={{
+                          outline: isSelected
+                            ? "2px solid rgb(99,102,241)"
+                            : undefined,
+                        }}
                       >
-                        {/* ★ Star — top-left, always visible if starred, hover-only if not */}
+                        {/* Checkbox — top left, hover only */}
+                        <div
+                          className="absolute top-2 left-2 z-10"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => toggleSelect(file.id, e)}
+                            className={`${CB} ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                          />
+                        </div>
+
+                        {/* Star — top right */}
                         <button
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             handleToggleStar(file);
                           }}
-                          className={`absolute top-2 left-2 z-10 p-1 rounded-lg bg-black/40 transition ${
-                            file.isStarred
-                              ? "opacity-100 text-yellow-400"
-                              : "opacity-0 group-hover:opacity-100 text-white hover:text-yellow-400"
-                          }`}
+                          className={`absolute top-2 right-2 z-10 p-1 rounded-lg bg-black/40 transition ${file.isStarred ? "opacity-100 text-yellow-400" : "opacity-0 group-hover:opacity-100 text-white hover:text-yellow-400"}`}
                           title={file.isStarred ? "Unstar" : "Star"}
                         >
                           <span className="material-symbols-outlined text-base">
                             {file.isStarred ? "star" : "star_outline"}
                           </span>
                         </button>
-
-                        {/* ⋮ Menu — top-right */}
-                        <div
-                          className="menu-wrapper"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setMenuOpenId((prev) =>
-                                prev === file.id ? null : file.id,
-                              );
-                            }}
-                            className="absolute top-2 right-2 z-10 p-1 rounded-lg text-white bg-black/40 hover:bg-black/60 opacity-0 group-hover:opacity-100 transition"
-                          >
-                            <span className="material-symbols-outlined text-base">
-                              more_vert
-                            </span>
-                          </button>
-                          {menuOpenId === file.id && (
-                            <ActionMenu file={file} position="grid" />
-                          )}
-                        </div>
 
                         {/* Preview / Icon */}
                         {hasPreview ? (
@@ -797,7 +810,7 @@ function FileTable({ files, folders = [], onRefresh }) {
               </div>
             )}
 
-            {paginated.length === 0 && filteredFolders.length === 0 && (
+            {paginated.length === 0 && (
               <div className="py-16 text-center text-slate-500 text-sm">
                 {search
                   ? `No results matching "${search}"`

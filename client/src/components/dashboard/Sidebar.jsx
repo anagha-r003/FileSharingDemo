@@ -45,11 +45,11 @@ function Sidebar({ isOpen, setIsOpen }) {
         {/* Logo */}
         <div className="px-4 py-6 flex items-center justify-center lg:justify-start overflow-hidden">
           {isOpen ? (
-            <span className="text-xl font-black text-violet-400 font-['Space_Grotesk'] whitespace-nowrap">
+            <span className="text-xl font-black pl-2 text-violet-400 font-['Space_Grotesk'] whitespace-nowrap">
               VaultLink
             </span>
           ) : (
-            <span className="text-xl font-black text-violet-400 font-['Space_Grotesk'] hidden lg:block">
+            <span className="text-xl font-black pl-2 text-violet-400 font-['Space_Grotesk'] hidden lg:block">
               V
             </span>
           )}
