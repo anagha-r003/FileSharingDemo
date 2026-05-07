@@ -2,9 +2,8 @@ package com.fileshare.server.service;
 
 import com.fileshare.server.dto.ResponseStructure;
 import com.fileshare.server.dto.response.RecycleBinStatsResponse;
-import com.fileshare.server.dto.response.StorageStatsResponse;
-import com.fileshare.server.entity.Share;
 import com.fileshare.server.entity.ShareHistory;
+import com.fileshare.server.entity.ShareLink;
 import com.fileshare.server.entity.User;
 import com.fileshare.server.entity.UserFile;
 import com.fileshare.server.exception.FileNotFoundException;
@@ -12,7 +11,7 @@ import com.fileshare.server.exception.StorageLimitExceededException;
 import com.fileshare.server.exception.UnauthorizedAccessException;
 import com.fileshare.server.repository.FileRepository;
 import com.fileshare.server.repository.ShareHistoryRepository;
-import com.fileshare.server.repository.ShareRepository;
+import com.fileshare.server.repository.ShareLinkRepository;
 import com.fileshare.server.repository.UserRepository;
 import com.fileshare.server.util.ResponseBuilder;
 import com.fileshare.server.util.SecurityUtil;
@@ -27,7 +26,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.domain.Page;
@@ -35,7 +33,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
@@ -51,7 +48,7 @@ import java.util.UUID;
 public class FileService {
     private final FileRepository fileRepository;
     private final UserRepository userRepository;
-    private final ShareRepository shareRepository;
+    private final ShareLinkRepository shareLinkRepository;
     private final ShareHistoryRepository shareHistoryRepository;
 
     @Value("${file.upload-dir}")
@@ -156,30 +153,45 @@ public class FileService {
     }
 
     @Transactional
-    public ResponseEntity<ResponseStructure<String>> deleteFile(Long fileId) {
+    public ResponseEntity<ResponseStructure<String>> deleteFile(List<Long> fileIds) {
 
-        log.info("Delete request for fileId: {}", fileId);
+        log.info("Delete request for fileId: {}", fileIds);
 
         // Get logged-in user
         User user = SecurityUtil.getCurrentUser();
 
         // Fetch file
-        UserFile file = fileRepository.findById(fileId)
-                .orElseThrow(() -> new FileNotFoundException("File not found"));
+        List<UserFile> files = fileRepository.findAllById(fileIds);
 
-        // Authorization check
-        if (!file.getUser().getId().equals(user.getId())) {
-            throw new UnauthorizedAccessException("Unauthorized access");
+        // Check if all files exist
+        if (files.size() != fileIds.size()) {
+            throw new FileNotFoundException("One or more files not found");
         }
 
-        // Soft delete (move to recycle bin)
-        file.setIsDeleted(true);
-        file.setDeletedAt(LocalDateTime.now());
+        long totalFreedStorage = 0;
+
+        for (UserFile file : files) {
+
+            // Authorization check
+            if (!file.getUser().getId().equals(user.getId())) {
+                throw new UnauthorizedAccessException(
+                        "Unauthorized access for file: " + file.getId()
+                );
+            }
+
+            // Soft delete
+            file.setIsDeleted(true);
+            file.setDeletedAt(LocalDateTime.now());
+
+            totalFreedStorage += file.getSize();
+        }
+
+
         user.setStorageUsed(
-                Math.max(0, user.getStorageUsed() - file.getSize())
+                Math.max(0, user.getStorageUsed() - totalFreedStorage)
         );
 
-        fileRepository.save(file);
+        fileRepository.saveAll(files);
         userRepository.save(user);
 
         return ResponseBuilder.build(
@@ -236,7 +248,7 @@ public class FileService {
         UserFile file = getAuthorizedDeletedFile(fileId);
 
         // Fetch all shares
-        List<Share> shares = shareRepository.findByFileId(fileId);
+        List<ShareLink> shares = shareLinkRepository.findByFile(file);
 
         // Convert to ShareHistory
         List<ShareHistory> historyList = shares.stream().map(share ->
@@ -245,7 +257,7 @@ public class FileService {
                         .fileName(file.getName())
                         .fileType(file.getType().name())
                         .fileSize(file.getSize())
-                        .sharedBy(share.getUser().getId())
+                        .sharedBy(share.getCreatedBy().getId())
                         .sharedAt(share.getCreatedAt())
                         .deletedAt(LocalDateTime.now())
                         .build()
@@ -255,7 +267,7 @@ public class FileService {
         shareHistoryRepository.saveAll(historyList);
 
         // Delete from share table
-        shareRepository.deleteAll(shares);
+        shareLinkRepository.deleteAll(shares);
 
         // Delete physical file from disk
         File diskFile = new File(file.getPath());

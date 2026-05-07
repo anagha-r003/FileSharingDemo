@@ -49,10 +49,11 @@ public class FileController {
     public ResponseEntity<Resource> view(@PathVariable Long fileId) throws IOException {
         return fileService.viewFile(fileId);
     }
-
-    @DeleteMapping("/{fileId}")
-    public ResponseEntity<ResponseStructure<String>> deleteFile(@PathVariable Long fileId) {
-        return fileService.deleteFile(fileId);
+    @DeleteMapping
+    public ResponseEntity<ResponseStructure<String>> deleteFiles(
+            @RequestBody List<Long> fileIds
+    ) {
+        return fileService.deleteFile(fileIds);
     }
 
     @PutMapping("/restore/{fileId}")

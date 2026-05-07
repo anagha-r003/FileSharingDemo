@@ -1,0 +1,78 @@
+package com.fileshare.server.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class EmailService {
+
+    private final JavaMailSender mailSender;
+
+    @Value("${spring.mail.username}")
+    private String fromEmail;
+
+    public void sendShareLinkEmail(
+            String toEmail,
+            String senderName,
+            String shareUrl,
+            String message
+    ) {
+
+        log.info("Sending share link email to {}", toEmail);
+
+        String subject =
+                senderName + " shared a file with you";
+
+        String body =
+                senderName + " has shared a file with you.\n\n"
+                        + (message != null && !message.isBlank()
+                        ? "Message: " + message + "\n\n"
+                        : "")
+                        + "Click the link below to access the file:\n"
+                        + shareUrl + "\n\n"
+                        + "This link may expire based on the sender's settings.";
+
+        sendEmail(toEmail, subject, body);
+    }
+
+    private void sendEmail(
+            String toEmail,
+            String subject,
+            String body
+    ) {
+
+        try {
+
+            SimpleMailMessage mail =
+                    new SimpleMailMessage();
+
+            mail.setFrom(fromEmail);
+            mail.setTo(toEmail);
+            mail.setSubject(subject);
+            mail.setText(body);
+
+            mailSender.send(mail);
+
+            log.info("Email sent successfully to {}", toEmail);
+
+        } catch (MailException e) {
+
+            log.error(
+                    "Failed to send email to {} : {}",
+                    toEmail,
+                    e.getMessage()
+            );
+
+            throw new RuntimeException(
+                    "Unable to send email"
+            );
+        }
+    }
+}

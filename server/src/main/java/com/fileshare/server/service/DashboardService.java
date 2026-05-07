@@ -5,7 +5,7 @@ import com.fileshare.server.dto.response.DashboardStats;
 import com.fileshare.server.dto.response.StorageStatsResponse;
 import com.fileshare.server.entity.User;
 import com.fileshare.server.repository.FileRepository;
-import com.fileshare.server.repository.ShareRepository;
+import com.fileshare.server.repository.ShareLinkRepository;
 import com.fileshare.server.util.ResponseBuilder;
 import com.fileshare.server.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
@@ -23,16 +23,16 @@ import java.util.List;
 public class DashboardService {
 
     private final FileRepository fileRepository;
-    private final ShareRepository shareRepository;
+    private final ShareLinkRepository shareLinkRepository;
 
     public DashboardStats getStats(Long userId) {
 
         long totalAssets = fileRepository.countByUserId(userId);
 
-        long activeShares = shareRepository
-                .countByUserIdAndExpiryTimeAfter(userId, LocalDateTime.now());
+        long activeShares = shareLinkRepository
+                .countByCreatedByIdAndExpiresAtAfter(userId, LocalDateTime.now());
 
-        long totalAccesses = shareRepository.getTotalAccesses(userId);
+        long totalAccesses = shareLinkRepository.countByCreatedById(userId);
 
         return DashboardStats.builder()
                 .totalAssets(totalAssets)
