@@ -30,8 +30,11 @@ export const viewFile = async (fileId) => {
   return url;
 };
 
-export const deleteFile = async (fileId) => {
-  const response = await api.delete(`/files/${fileId}`);
+export const deleteFile = async (fileIds) => {
+  const response = await api.delete("/files", {
+    data: fileIds,
+  });
+
   return response.data;
 };
 
@@ -94,13 +97,4 @@ export const getStarredFiles = async () => {
   return response.data;
 };
 
-export const createShareLink = async (fileId, options = {}) => {
-  const response = await api.post(`/files/${fileId}/share`, options);
-  return response.data;
-};
-
-export const getShareLinks = async (fileId) => {
-  const response = await api.get(`/files/${fileId}/shares`);
-  return response.data;
-};
 

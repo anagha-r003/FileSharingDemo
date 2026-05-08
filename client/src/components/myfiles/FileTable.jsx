@@ -90,7 +90,7 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 const CB =
   "w-4 h-4 cursor-pointer appearance-none rounded border border-slate-500 checked:bg-violet-600 checked:border-violet-600 bg-transparent transition";
 
-function FileTable({ files, folders = [], onRefresh }) {
+function FileTable({ files, onRefresh }) {
   const [shareFile, setShareFile] = useState(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -139,7 +139,7 @@ function FileTable({ files, folders = [], onRefresh }) {
     if (!deleteTarget) return;
     setDeleteTarget(null);
     try {
-      await deleteFile(deleteTarget.id);
+      await deleteFile([deleteTarget.id]);
       onRefresh();
     } catch (err) {
       console.error("Delete failed:", err);
@@ -188,8 +188,10 @@ function FileTable({ files, folders = [], onRefresh }) {
 
   const handleBulkDelete = async () => {
     setBulkDeleting(true);
+
     try {
-      await Promise.all(selectedIds.map((id) => deleteFile(id)));
+      await deleteFile(selectedIds);
+
       clearSelection();
       onRefresh();
     } catch (err) {
@@ -198,7 +200,6 @@ function FileTable({ files, folders = [], onRefresh }) {
       setBulkDeleting(false);
     }
   };
-
   const stats = useMemo(() => {
     const next = { documents: 0, images: 0, videos: 0, others: 0 };
     for (const f of files) {
@@ -473,7 +474,7 @@ function FileTable({ files, folders = [], onRefresh }) {
                   ))} */}
 
                   {/* Files */}
-                  {paginated.length === 0 && filteredFolders.length === 0 ? (
+                  {paginated.length === 0 ? (
                     <tr>
                       <td
                         colSpan={6}

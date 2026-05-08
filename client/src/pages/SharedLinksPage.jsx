@@ -2,36 +2,37 @@ import { useEffect, useState } from "react";
 import Sidebar from "../components/dashboard/Sidebar";
 import TopNavbar from "../components/dashboard/TopNavbar";
 import SharedLinksTable from "../components/sharedlink/SharedLinksTable";
+import { getMySharedFiles } from "../services/shareService";
 
-const DUMMY_SHARED_DATA = [
-  {
-    id: 1,
-    fileName: "Project_Proposal.pdf",
-    recipientEmail: "client@example.com",
-    expiryDate: "2026-05-15",
-    viewCount: 24,
-    shareUrl: "https://vaultlink.com/s/123",
-  },
-  {
-    id: 2,
-    fileName: "Budget_Q3.xlsx",
-    recipientEmail: "finance@company.com",
-    expiryDate: "2026-04-30",
-    viewCount: 8,
-    shareUrl: "https://vaultlink.com/s/456",
-  },
-  {
-    id: 3,
-    fileName: "Brand_Assets.zip",
-    recipientEmail: "marketing@agency.io",
-    expiryDate: "2026-06-01",
-    viewCount: 142,
-    shareUrl: "https://vaultlink.com/s/789",
-  },
-];
+// const DUMMY_SHARED_DATA = [
+//   {
+//     id: 1,
+//     fileName: "Project_Proposal.pdf",
+//     recipientEmail: "client@example.com",
+//     expiryDate: "2026-05-15",
+//     viewCount: 24,
+//     shareUrl: "https://vaultlink.com/s/123",
+//   },
+//   {
+//     id: 2,
+//     fileName: "Budget_Q3.xlsx",
+//     recipientEmail: "finance@company.com",
+//     expiryDate: "2026-04-30",
+//     viewCount: 8,
+//     shareUrl: "https://vaultlink.com/s/456",
+//   },
+//   {
+//     id: 3,
+//     fileName: "Brand_Assets.zip",
+//     recipientEmail: "marketing@agency.io",
+//     expiryDate: "2026-06-01",
+//     viewCount: 142,
+//     shareUrl: "https://vaultlink.com/s/789",
+//   },
+// ];
 
 function SharedLinksPage() {
-  const [sharedLinks] = useState(DUMMY_SHARED_DATA);
+  const [sharedLinks, setSharedLinks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -42,9 +43,40 @@ function SharedLinksPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    fetchSharedLinks();
+  }, []);
+
+  const fetchSharedLinks = async () => {
+    try {
+      setLoading(true);
+
+      const response = await getMySharedFiles();
+
+      const formattedData = response.data.map((item) => ({
+        id: item.id,
+
+        fileName: item.file?.name || "Unknown File",
+
+        recipientEmail: item.recipientEmail,
+
+        expiryDate: item.expiresAt,
+
+        viewCount: item.accessed ? 1 : 0,
+
+        shareUrl: `http://localhost:5173/public/share/${item.token}`,
+      }));
+
+      setSharedLinks(formattedData);
+    } catch (error) {
+      console.error("Failed to fetch shared links", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRefresh = () => {
-    setLoading(true);
-    setTimeout(() => setLoading(false), 500);
+    fetchSharedLinks();
   };
 
   return (

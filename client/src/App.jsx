@@ -6,10 +6,11 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import MyFilesPage from "./pages/MyFilesPage";
-import SharedLinksPage from "./pages/SharedLinksPage";
+import SharedLinkPreviewPage from "./pages/SharedLinkPreviewPage";
 import StarredPage from "./pages/StarredPage";
 import MyProfile from "./pages/MyProfile";
 import RecycleBin from "./pages/RecycleBinPage";
+import SharedLinksPage from "./pages/SharedLinksPage";
 
 function App() {
   return (
@@ -19,7 +20,10 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-
+          <Route
+            path="/public/share/:token"
+            element={<SharedLinkPreviewPage />}
+          />
           {/* Protected routes */}
           <Route
             path="/dashboard"

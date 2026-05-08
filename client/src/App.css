@@ -182,3 +182,29 @@
     border-right-color: var(--border);
   }
 }
+
+/* ── VaultLink Shared Preview ── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+.mono { font-family: 'DM Mono', monospace; }
+
+.grid-bg {
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.025) 39px, rgba(255,255,255,0.025) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.025) 39px, rgba(255,255,255,0.025) 40px);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.animate-fade-up-1 { animation: fadeUp 0.5s 0.05s ease both; }
+.animate-fade-up-2 { animation: fadeUp 0.5s 0.15s ease both; }
+.animate-fade-up-3 { animation: fadeUp 0.5s 0.25s ease both; }
+.pulse-dot         { animation: pulse-dot 2s infinite; }
