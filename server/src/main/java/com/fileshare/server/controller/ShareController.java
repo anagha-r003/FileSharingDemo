@@ -66,4 +66,13 @@ public class ShareController {
 
         return shareService.viewSharedFile(token);
     }
+
+    @GetMapping("/download/{token}")
+    public ResponseEntity<Resource>
+    downloadSharedFile(
+            @PathVariable String token
+    ) throws IOException {
+
+        return shareService.downloadSharedFile(token);
+    }
 }

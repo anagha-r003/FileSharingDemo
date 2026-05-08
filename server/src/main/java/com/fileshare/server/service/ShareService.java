@@ -63,7 +63,7 @@ public class ShareService {
                     UUID.randomUUID().toString();
 
             String shareUrl =
-                    "http://localhost:8080/share/view/"
+                    "http://localhost:5173/public/share/"
                             + token;
 
             ShareLink shareLink = ShareLink.builder()
@@ -122,17 +122,31 @@ public class ShareService {
 
         ShareLinkResponse response =
                 ShareLinkResponse.builder()
-                        .shareUrl("")
+
                         .recipientEmail(
                                 shareLink.getRecipientEmail()
                         )
+
                         .fileName(
                                 shareLink.getFile().getName()
                         )
+
                         .expiresAt(
                                 shareLink.getExpiresAt()
                         )
+
                         .accessed(true)
+
+                        .viewUrl(
+                                "http://localhost:8080/share/view/"
+                                        + shareLink.getToken()
+                        )
+
+                        .downloadUrl(
+                                "http://localhost:8080/share/download/"
+                                        + shareLink.getToken()
+                        )
+
                         .build();
 
         return ResponseBuilder.build(
@@ -140,6 +154,53 @@ public class ShareService {
                 "Share link accessed successfully",
                 response
         );
+    }
+
+    public ResponseEntity<Resource>
+    downloadSharedFile(String token)
+            throws IOException {
+
+        log.info(
+                "Downloading shared file with token: {}",
+                token
+        );
+
+        ShareLink shareLink =
+                getValidShareLink(token);
+
+        shareLink.setAccessed(true);
+
+        shareLinkRepository.save(shareLink);
+
+        UserFile file = shareLink.getFile();
+
+        Path path = Paths.get(file.getPath());
+
+        Resource resource =
+                new UrlResource(path.toUri());
+
+        if (!resource.exists()) {
+
+            throw new RuntimeException(
+                    "File not found"
+            );
+        }
+
+        String contentType =
+                file.getMimeType() != null
+                        ? file.getMimeType()
+                        : "application/octet-stream";
+
+        return ResponseEntity.ok()
+                .contentType(
+                        MediaType.parseMediaType(contentType)
+                )
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\""
+                                + file.getName() + "\""
+                )
+                .body(resource);
     }
 
     public ResponseEntity<ResponseStructure<List<ShareLink>>>

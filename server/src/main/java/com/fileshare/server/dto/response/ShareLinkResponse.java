@@ -18,4 +18,8 @@ public class ShareLinkResponse {
     private LocalDateTime expiresAt;
 
     private Boolean accessed;
+
+    private String viewUrl;
+
+    private String downloadUrl;
 }

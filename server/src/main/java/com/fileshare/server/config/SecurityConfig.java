@@ -4,6 +4,7 @@ import com.fileshare.server.jwt.JwtFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -31,13 +32,22 @@ public class SecurityConfig {
                 .cors(cors -> {})
                 .csrf(csrf -> csrf.disable())
 
+
+                .headers(headers ->
+                        headers.frameOptions(frame -> frame.disable())
+                )
+
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**","/share/view/**").permitAll()
+                        .requestMatchers("/auth/**","/share/view/**","/share/download/**").permitAll()
                         .requestMatchers("/auth/register", "/auth/login", "/auth/refresh").permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/share/*"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
 
