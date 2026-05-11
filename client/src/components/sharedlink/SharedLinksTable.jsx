@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { downloadFile } from "../../services/fileService";
-// import { revokeShare } from "../../services/shareService";
+import { revokeShareLink } from "../../services/shareService";
+import Pagination from "../common/Pagination";
 
 const getFileIcon = (name) => {
   const ext = name?.split(".").pop()?.toLowerCase();
@@ -22,7 +22,7 @@ const formatDate = (dateStr) => {
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
-function SharedLinksTable({ sharedLinks = [], onRefresh }) {
+function SharedLinksTable({ sharedLinks = [], onRefresh, showToast }) {
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -51,15 +51,44 @@ function SharedLinksTable({ sharedLinks = [], onRefresh }) {
   const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const stats = {
-    active: sharedLinks.filter((l) => new Date(l.expiryDate) > new Date())
-      .length,
-    expired: sharedLinks.filter((l) => new Date(l.expiryDate) <= new Date())
-      .length,
+    active: sharedLinks.filter(
+      (l) => l.active === true && new Date(l.expiryDate) > new Date(),
+    ).length,
+
+    expired: sharedLinks.filter(
+      (l) => l.active === false || new Date(l.expiryDate) <= new Date(),
+    ).length,
     totalViews: sharedLinks.reduce(
       (acc, curr) => acc + (curr.viewCount || 0),
       0,
     ),
     files: sharedLinks.length,
+  };
+
+  const handleRevoke = async (shareId) => {
+    const link = sharedLinks.find((l) => l.id === shareId);
+
+    if (
+      !link ||
+      link.active === false ||
+      new Date(link.expiryDate) <= new Date()
+    ) {
+      showToast?.("Link already inactive");
+      return;
+    }
+    try {
+      await revokeShareLink(shareId);
+      showToast?.("Share link revoked!");
+
+      setMenuOpenId(null);
+
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error("Failed to revoke share link", error);
+      showToast?.("Failed to revoke link");
+    }
   };
 
   const ActionMenu = ({ link, position = "bottom" }) => (
@@ -69,6 +98,7 @@ function SharedLinksTable({ sharedLinks = [], onRefresh }) {
       <button
         onClick={() => {
           navigator.clipboard.writeText(link.shareUrl);
+          showToast?.("Link copied!");
           setMenuOpenId(null);
         }}
         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition group"
@@ -85,10 +115,17 @@ function SharedLinksTable({ sharedLinks = [], onRefresh }) {
       </button>
       <div className="mx-3 my-1 border-t border-white/5" />
       <button
+        disabled={
+          link.active === false || new Date(link.expiryDate) <= new Date()
+        }
         onClick={() => {
-          /* handleRevoke(link.id) */
+          handleRevoke(link.id);
         }}
-        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-400/10 transition group"
+        className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm transition group ${
+          link.active === false || new Date(link.expiryDate) <= new Date()
+            ? "opacity-50 cursor-not-allowed text-slate-500"
+            : "text-red-400 hover:bg-red-400/10"
+        }`}
       >
         <span className="w-7 h-7 rounded-lg bg-red-400/10 flex items-center justify-center flex-shrink-0 group-hover:bg-red-400/20 transition">
           <span
@@ -232,6 +269,8 @@ function SharedLinksTable({ sharedLinks = [], onRefresh }) {
                   const { icon, color } = getFileIcon(link.fileName);
                   const isExpired = new Date(link.expiryDate) <= new Date();
 
+                  const isRevoked = link.active === false;
+
                   return (
                     <tr
                       key={link.id}
@@ -258,7 +297,11 @@ function SharedLinksTable({ sharedLinks = [], onRefresh }) {
                         {formatDate(link.expiryDate)}
                       </td>
                       <td className="py-3 px-6">
-                        {isExpired ? (
+                        {isRevoked ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-400/10 text-gray-400 border border-gray-400/20 uppercase tracking-wider">
+                            Revoked
+                          </span>
+                        ) : isExpired ? (
                           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-400/10 text-red-400 border border-red-400/20 uppercase tracking-wider">
                             Expired
                           </span>
@@ -349,6 +392,14 @@ function SharedLinksTable({ sharedLinks = [], onRefresh }) {
             })}
           </div>
         )}
+
+        <Pagination
+          page={page}
+          setPage={setPage}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          label={search ? "results" : "shared links"}
+        />
       </div>
     </>
   );

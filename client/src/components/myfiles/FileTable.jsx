@@ -8,6 +8,8 @@ import {
 } from "../../services/fileService";
 import ShareModal from "./ShareModal";
 import DeleteConfirmModal from "./DeleteConfirmModal";
+import Pagination from "../common/Pagination";
+import AddToFolderModal from "./AddToFolderModal";
 
 const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp", "svg"]);
 const VIDEO_EXTS = new Set(["mp4", "mov", "avi", "mkv"]);
@@ -100,6 +102,8 @@ function FileTable({ files, onRefresh }) {
   const [selectedIds, setSelectedIds] = useState([]);
   const [hoveredId, setHoveredId] = useState(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [folders, setFolders] = useState([]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -212,18 +216,25 @@ function FileTable({ files, onRefresh }) {
     return next;
   }, [files]);
 
-  const pageNumbers = useMemo(() => {
-    const delta = 2;
-    const range = [];
-    for (
-      let i = Math.max(1, page - delta);
-      i <= Math.min(totalPages, page + delta);
-      i++
-    ) {
-      range.push(i);
-    }
-    return range;
-  }, [page, totalPages]);
+  const handleFolderConfirm = (folderName) => {
+    setShowFolderModal(false);
+    // TODO: await addFilesToFolder(selectedIds, folderName)
+    clearSelection();
+    onRefresh();
+  };
+
+  // const pageNumbers = useMemo(() => {
+  //   const delta = 2;
+  //   const range = [];
+  //   for (
+  //     let i = Math.max(1, page - delta);
+  //     i <= Math.min(totalPages, page + delta);
+  //     i++
+  //   ) {
+  //     range.push(i);
+  //   }
+  //   return range;
+  // }, [page, totalPages]);
 
   return (
     <>
@@ -312,6 +323,17 @@ function FileTable({ files, onRefresh }) {
                 <span className="text-sm font-semibold text-white mr-2">
                   {selectedIds.length} selected
                 </span>
+
+                <button
+                  onClick={() => setShowFolderModal(true)}
+                  title="Add to folder"
+                  className="p-2 rounded-lg text-amber-400 bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/20 transition"
+                >
+                  <span className="material-symbols-outlined text-base">
+                    create_new_folder
+                  </span>
+                </button>
+
                 <button
                   onClick={handleBulkDownload}
                   title="Download selected"
@@ -822,71 +844,14 @@ function FileTable({ files, onRefresh }) {
         )}
 
         {/* Pagination */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 md:px-6 py-4 border-t border-white/5">
-          <p className="text-slate-500 text-xs md:text-sm text-center sm:text-left">
-            Showing{" "}
-            <span className="text-white font-medium">
-              {filtered.length === 0 ? 0 : (page - 1) * pageSize + 1}
-            </span>{" "}
-            to{" "}
-            <span className="text-white font-medium">
-              {Math.min(page * pageSize, filtered.length)}
-            </span>{" "}
-            of <span className="text-white font-medium">{filtered.length}</span>{" "}
-            {search ? "results" : "files"}
-          </p>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-2 md:px-3 py-1.5 rounded-lg text-xs md:text-sm text-slate-400 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition"
-            >
-              Prev
-            </button>
-            {pageNumbers[0] > 1 && (
-              <>
-                <button
-                  onClick={() => setPage(1)}
-                  className="w-7 h-7 md:w-8 md:h-8 rounded-lg text-xs md:text-sm text-slate-400 hover:text-white hover:bg-white/5 transition"
-                >
-                  1
-                </button>
-                {pageNumbers[0] > 2 && (
-                  <span className="text-slate-600 px-1">...</span>
-                )}
-              </>
-            )}
-            {pageNumbers.map((p) => (
-              <button
-                key={p}
-                onClick={() => setPage(p)}
-                className={`w-7 h-7 md:w-8 md:h-8 rounded-lg text-xs md:text-sm font-medium transition ${p === page ? "bg-violet-600 text-white" : "text-slate-400 hover:text-white hover:bg-white/5"}`}
-              >
-                {p}
-              </button>
-            ))}
-            {pageNumbers[pageNumbers.length - 1] < totalPages && (
-              <>
-                {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && (
-                  <span className="text-slate-600 px-1">...</span>
-                )}
-                <button
-                  onClick={() => setPage(totalPages)}
-                  className="w-7 h-7 md:w-8 md:h-8 rounded-lg text-xs md:text-sm text-slate-400 hover:text-white hover:bg-white/5 transition"
-                >
-                  {totalPages}
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-2 md:px-3 py-1.5 rounded-lg text-xs md:text-sm text-slate-400 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+
+        <Pagination
+          page={page}
+          setPage={setPage}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          label={search ? "results" : "files"}
+        />
       </div>
 
       {deleteTarget && (
@@ -898,6 +863,14 @@ function FileTable({ files, onRefresh }) {
       )}
       {shareFile && (
         <ShareModal file={shareFile} onClose={() => setShareFile(null)} />
+      )}
+      {showFolderModal && (
+        <AddToFolderModal
+          selectedCount={selectedIds.length}
+          folders={folders}
+          onConfirm={handleFolderConfirm}
+          onClose={() => setShowFolderModal(false)}
+        />
       )}
     </>
   );

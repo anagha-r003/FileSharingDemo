@@ -3,38 +3,17 @@ import Sidebar from "../components/dashboard/Sidebar";
 import TopNavbar from "../components/dashboard/TopNavbar";
 import SharedLinksTable from "../components/sharedlink/SharedLinksTable";
 import { getMySharedFiles } from "../services/shareService";
-
-// const DUMMY_SHARED_DATA = [
-//   {
-//     id: 1,
-//     fileName: "Project_Proposal.pdf",
-//     recipientEmail: "client@example.com",
-//     expiryDate: "2026-05-15",
-//     viewCount: 24,
-//     shareUrl: "https://vaultlink.com/s/123",
-//   },
-//   {
-//     id: 2,
-//     fileName: "Budget_Q3.xlsx",
-//     recipientEmail: "finance@company.com",
-//     expiryDate: "2026-04-30",
-//     viewCount: 8,
-//     shareUrl: "https://vaultlink.com/s/456",
-//   },
-//   {
-//     id: 3,
-//     fileName: "Brand_Assets.zip",
-//     recipientEmail: "marketing@agency.io",
-//     expiryDate: "2026-06-01",
-//     viewCount: 142,
-//     shareUrl: "https://vaultlink.com/s/789",
-//   },
-// ];
+import Toast from "../components/sharedlink/Toast ";
 
 function SharedLinksPage() {
   const [sharedLinks, setSharedLinks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const [toast, setToast] = useState({
+    visible: false,
+    message: "",
+  });
 
   useEffect(() => {
     const handleResize = () => setSidebarOpen(window.innerWidth >= 1024);
@@ -46,6 +25,20 @@ function SharedLinksPage() {
   useEffect(() => {
     fetchSharedLinks();
   }, []);
+
+  const showToast = (message) => {
+    setToast({
+      visible: true,
+      message,
+    });
+
+    setTimeout(() => {
+      setToast((prev) => ({
+        ...prev,
+        visible: false,
+      }));
+    }, 3000);
+  };
 
   const fetchSharedLinks = async () => {
     try {
@@ -61,6 +54,8 @@ function SharedLinksPage() {
         recipientEmail: item.recipientEmail,
 
         expiryDate: item.expiresAt,
+
+        active: item.active,
 
         viewCount: item.accessed ? 1 : 0,
 
@@ -106,11 +101,13 @@ function SharedLinksPage() {
               <SharedLinksTable
                 sharedLinks={sharedLinks}
                 onRefresh={handleRefresh}
+                showToast={showToast}
               />
             )}
           </div>
         </main>
       </div>
+      <Toast message={toast.message} visible={toast.visible} />
     </div>
   );
 }
