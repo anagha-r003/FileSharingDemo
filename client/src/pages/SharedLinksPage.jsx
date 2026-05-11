@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Sidebar from "../components/dashboard/Sidebar";
 import TopNavbar from "../components/dashboard/TopNavbar";
-import SharedLinksTable from "../components/sharedlink/SharedLinksTable";
+import SharedLinksTable from "../components/features/sharedlink/SharedLinksTable";
 import { getMySharedFiles } from "../services/shareService";
 
 // const DUMMY_SHARED_DATA = [

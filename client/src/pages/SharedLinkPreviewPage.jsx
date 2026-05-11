@@ -7,7 +7,7 @@ import TopBar from "../components/sharedlink/TopBar";
 import SharedByChip from "../components/sharedlink/SharedbyChip";
 import FilePreviewCard from "../components/sharedlink/FilePreviewCard";
 import PageFooter from "../components/sharedlink/PageFooter";
-import Toast from "../components/sharedlink/Toast ";
+import Toast from "../components/sharedlink/Toast";
 import LinkExpired from "../components/sharedlink/LinkExpired";
 
 // ─── Demo data (replace with real props / API data) ───────────────────────────

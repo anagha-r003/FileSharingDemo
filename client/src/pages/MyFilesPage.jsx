@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Sidebar from "../components/dashboard/Sidebar";
 import TopNavbar from "../components/dashboard/TopNavbar";
-import FileTable from "../components/myfiles/FileTable";
+import FileTable from "../components/features/myfiles/FileTable";
 import { getFiles } from "../services/fileService";
 import { getFolders } from "../services/folderService";
 import { useLocation } from "react-router-dom";

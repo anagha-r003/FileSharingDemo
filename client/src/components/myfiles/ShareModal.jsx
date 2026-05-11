@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createShareLink } from "../../services/shareService";
-import Toast from "../sharedlink/Toast ";
+import Toast from "../sharedlink/Toast";
 
 function ShareModal({ file, onClose }) {
   const [email, setEmail] = useState("");

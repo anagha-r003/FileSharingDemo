@@ -60,32 +60,6 @@ const ProfileDropdown = ({ isOpen, onClose }) => {
             </span>
           </div>
         </button>
-
-        <div className="my-1 border-t border-white/5 mx-2" />
-
-        {/* Theme Toggle (Inline Display) */}
-        <div className="px-3 py-2.5">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-400/10 flex items-center justify-center">
-                <span className="material-symbols-outlined text-amber-400 text-lg">
-                  dark_mode
-                </span>
-              </div>
-              <span className="text-sm font-semibold text-slate-200">
-                Theme
-              </span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 bg-black/20 p-1 rounded-lg">
-            <button className="flex items-center justify-center gap-2 py-1.5 text-[10px] font-black uppercase tracking-widest bg-violet-600 text-white rounded-md shadow-lg shadow-violet-600/20">
-              Dark
-            </button>
-            <button className="flex items-center justify-center gap-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-300 transition">
-              Light
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
